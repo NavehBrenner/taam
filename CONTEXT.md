@@ -1,0 +1,75 @@
+# CONTEXT — read this first
+
+> If you are a new Claude session, a new collaborator, or Naveh-in-six-months:
+> read this file top to bottom before touching anything else. It is the only
+> file that is allowed to be a summary. Everything else is detail.
+
+## What this project is
+
+**Palate** is a personal, single-user preference-learning system for drinks.
+
+The loop:
+
+1. Every drinkable item gets a **profile** — a fixed-length vector of sensory
+   attributes (bitterness, sweetness, body, hoppiness, …) derived from whatever
+   we know about it.
+2. Naveh logs what he drank: an overall rating plus 2–4 short follow-up answers.
+3. A small model learns the mapping `profile -> his rating`. That learned weight
+   vector *is* his palate, and it is meant to be readable, not a black box.
+4. The system recommends: from a menu, from a shop shelf, from memory, and
+   conditioned on **mood/context** ("light, at noon, with a burger").
+
+It starts with **beer**. It is designed from day one to extend to **whisky**,
+then **wine**, then anything else. See `docs/11-multi-domain.md`.
+
+## What this project is NOT
+
+- Not a business. Not a startup. Not a product with users. It is a personal
+  project for fun and for the ML.
+- Not a social check-in app. Untappd already exists and is good at that. If a
+  feature is really "a diary with friends", it is out of scope.
+- Not a catalog. We do not want to own beer data; we want to borrow it.
+
+## The one-paragraph technical thesis
+
+Naive collaborative filtering fails here: one user, tens of ratings, and public
+rating data is so popularity-skewed that a model trained on it becomes a
+bestseller list wearing a personalization costume. The bet instead is
+**content-based Bayesian regression over a low-dimensional sensory space, with a
+population-derived prior**. Rating is decomposed into a community term plus a
+personal deviation term, so the system is useful at N=0 and degrades gracefully
+rather than falling off a cliff. Uncertainty is first-class, because it powers
+both honest recommendations and the active-learning loop that decides what to
+suggest next.
+
+## Ground rules for this repo
+
+1. **Nothing is locked.** Every significant choice lives in `DECISIONS.md` with
+   its alternatives intact and a status of `OPEN`. Docs may say "current
+   recommendation". No doc may say "we decided" unless the decision has an
+   accepted ADR in `docs/adr/`. As of this writing there are **zero** accepted
+   ADRs.
+2. **Dead ends are expected and are output.** This project will hit walls. When
+   an approach fails, it gets an entry in `DEAD-ENDS.md` with the evidence.
+   A documented dead end is a result, not a wasted week.
+3. **Every modelling claim gets a baseline.** See `docs/10-evaluation.md`. The
+   project's honesty depends on this and nothing else.
+4. **Log context from day one, even before it is modelled.** Data you did not
+   collect is gone forever. See `docs/08-mood-and-context.md`.
+
+## Where to go next
+
+| You want to… | Read |
+|---|---|
+| Understand the whole design | `docs/03-architecture.md` |
+| Know what is undecided | `DECISIONS.md` |
+| Know what to build first | `ROADMAP.md` |
+| Know what already failed | `DEAD-ENDS.md` |
+| Understand the data problem | `docs/05-data-sources.md` |
+| Understand the ML | `docs/07-preference-model.md` |
+| Know why we didn't just use Untappd | `docs/12-prior-art.md` |
+
+## Status
+
+**Phase 0 — design only.** No code has been written. No data has been acquired.
+No decision has been made. Everything in this repo is a plan.

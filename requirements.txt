@@ -1,0 +1,15 @@
+# Deliberately small. At this data scale a deep-learning dependency is a smell.
+numpy
+scipy
+pandas
+scikit-learn
+matplotlib
+requests
+python-dotenv
+
+# profiler (M0) — sentence embeddings for description -> descriptor regression
+sentence-transformers
+
+# optional, only if the Bayesian/hierarchical prior work (D-007 option C) starts
+# pymc
+# arviz
