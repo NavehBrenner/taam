@@ -73,3 +73,16 @@ suggest next.
 
 **Phase 0 — design only.** No code has been written. No data has been acquired.
 No decision has been made. Everything in this repo is a plan.
+
+## Tracking
+
+Linear project: **Palate** (team: Naveh Brenner) —
+https://linear.app/naveh-brenner/project/palate-dbb61e29912b
+
+Issues are milestone-shaped and each carries its kill criteria. The repo docs are
+the source of truth for design; Linear is the source of truth for *what is
+being worked on*.
+
+Start with **NVB-76 (M0, profiler validation)** and **NVB-80 (start logging
+beers)**. The first can kill the project in a day; the second cannot be started
+retroactively.
