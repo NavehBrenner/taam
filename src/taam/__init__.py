@@ -1,4 +1,4 @@
-"""Palate — personal preference learning for drinks.
+"""taam (טעם) — personal preference learning for drinks.
 
 Layering rule (see docs/03-architecture.md):
 

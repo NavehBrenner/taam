@@ -122,7 +122,7 @@ source, and records which one it got so quality can be tracked per source.
 ## Module sketch
 
 ```
-src/palate/
+src/taam/
   domains/      Descriptor vocabularies. Pure data. beer.py, whisky.py, wine.py.
                 Defines shared axes vs. domain tail (D-014).
   catalog/      Source adapters (catalog_beer.py, untappd.py, beerdb.py,

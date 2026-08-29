@@ -6,7 +6,9 @@
 
 ## What this project is
 
-**Palate** is a personal, single-user preference-learning system for drinks.
+**taam** (Hebrew טעם — both *taste* and *reason*) is a personal, single-user
+preference-learning system for drinks. The name is the thesis: the system should
+give you a taste and a reason for it.
 
 The loop:
 
@@ -68,15 +70,27 @@ suggest next.
 | Understand the data problem | `docs/05-data-sources.md` |
 | Understand the ML | `docs/07-preference-model.md` |
 | Know why we didn't just use Untappd | `docs/12-prior-art.md` |
+| Add a data source (read first) | `docs/13-scraping-policy.md` |
+
+## Known live problem
+
+**Untappd's API terms conflict with the architecture.** They require caches to be
+purged every 24 hours, forbid using the API to build your own beer database, and
+forbid "mining or analyzing" the data — which describes this project. The catalog
+backbone therefore has to be catalog.beer + beer.db + manual entry, with Untappd
+demoted to on-demand enrichment. **catalog.beer's own terms are unchecked and
+should be read before anything is built on it.** Details in
+`docs/13-scraping-policy.md`.
 
 ## Status
 
 **Phase 0 — design only.** No code has been written. No data has been acquired.
-No decision has been made. Everything in this repo is a plan.
+One decision has been made (ADR-0001: public repo, MIT). Everything else in this
+repo is a plan.
 
 ## Tracking
 
-Linear project: **Palate** (team: Naveh Brenner) —
+Linear project: **taam** (team: Naveh Brenner) —
 https://linear.app/naveh-brenner/project/palate-dbb61e29912b
 
 Issues are milestone-shaped and each carries its kill criteria. The repo docs are

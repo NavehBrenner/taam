@@ -1,5 +1,5 @@
 [project]
-name = "palate"
+name = "taam"
 version = "0.0.0"
 description = "Personal preference learning for drinks. Beer first, domain-agnostic by design."
 requires-python = ">=3.10"

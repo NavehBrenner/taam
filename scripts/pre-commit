@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Guard against publishing personal data from a public repo.
+# Install:  ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+set -euo pipefail
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+bad=""
+
+# Nothing under data/ except .gitkeep
+bad+=$(echo "$staged" | grep -E '^data/' | grep -v '\.gitkeep$' || true)
+
+# No database files, no .env, anywhere
+bad+=$(echo "$staged" | grep -E '\.(sqlite|sqlite3|db|env)$|(^|/)\.env' || true)
+
+# No obvious check-in exports
+bad+=$(echo "$staged" | grep -E 'checkins?.*\.(csv|json|jsonl)$' || true)
+
+if [ -n "$(echo "$bad" | tr -d '[:space:]')" ]; then
+  echo "pre-commit: refusing to commit personal data / secrets:" >&2
+  echo "$bad" | sed '/^$/d' | sed 's/^/  - /' >&2
+  echo >&2
+  echo "This repo is public (ADR-0001). If this is genuinely safe, use --no-verify." >&2
+  exit 1
+fi

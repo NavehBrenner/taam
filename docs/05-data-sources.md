@@ -12,6 +12,8 @@ Using either for the other's job is a mistake.
 
 ### catalog.beer
 - REST API, ~67,000 beers and ~6,600 brewers.
+- ⚠️ **Terms unchecked.** If they permit permanent retention, this becomes the
+  backbone and the Untappd retention problem mostly resolves. Check first.
 - Per-beer: name, style, ABV, IBU, description.
 - Free API key, HTTP basic auth. Docs actively maintained (updated Aug 2026).
 - **Best default for item lookup.** Descriptions are what the profiler eats.
@@ -19,6 +21,12 @@ Using either for the other's job is a mistake.
   whether the key has an undocumented rate limit.
 
 ### Untappd API
+
+> ⚠️ **Read `docs/13-scraping-policy.md` first.** Untappd's API terms require
+> cache purges every 24 hours and forbid building your own beer database or
+> mining/analysing the data. Untappd is an **on-demand enrichment** source here,
+> not a store.
+
 - Very large catalog, and **Israeli coverage is genuinely good** — Tempo,
   Israel Beer Breweries (IBBL), Biratenu, Sheeta and Beer Bazaar all have full
   beer lists, plus a country-filtered top-rated listing.
@@ -76,6 +84,10 @@ Using either for the other's job is a mistake.
   label mining or an LLM profiler.
 
 ## Caching and rate-limit policy
+
+> Per-source, **subject to that source's terms** — see
+> `docs/13-scraping-policy.md`. Untappd specifically does *not* permit the
+> permanent cache described below.
 
 1. Every external response is written to a local cache keyed by source + id, and
    **never re-fetched** unless explicitly invalidated.

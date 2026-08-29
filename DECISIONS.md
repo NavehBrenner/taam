@@ -106,9 +106,17 @@ single cheapest way to make the model work at N=10.
 | **Kaggle Beer Profile set** | ~3.2k | **labelled descriptor vectors** | free | *Not a catalog.* This is the profiler's training set. Do not confuse the two. |
 | **Scraping** | Whatever you point it at | whatever is on the page | ToS violation | Defensible as a one-time backfill of a few hundred local beers. Not as a running pipeline. |
 
-**Current lean:** catalog.beer as primary lookup, Untappd as secondary and as the
-source of community scores (which D-006 needs), beer.db as bulk seed, manual as
-the always-available floor.
+**Current lean:** catalog.beer and beer.db as the **permanent** local catalog;
+Untappd demoted to an **on-demand enrichment** source for community scores and
+Israeli coverage; manual entry as the always-available floor.
+
+⚠️ **This lean moved because of Untappd's API terms** — they require caches to be
+purged every 24 hours and forbid using the API to build your own beer database or
+to "mine or analyze" the data. That is not a compliance footnote, it is a design
+constraint: Untappd cannot back a permanent local store. See
+`docs/13-scraping-policy.md`. **catalog.beer's own terms are unchecked** — check
+them before building on it, since if they permit retention the problem mostly
+resolves.
 
 ---
 
@@ -121,7 +129,7 @@ all have full beer lists, and there is a country-filtered top-rated page.
 | Option | For | Against |
 |---|---|---|
 | **A. Untappd API only** | Already covers most of it. Legitimate. | 100/hr. Hebrew/English name variants will be messy. |
-| **B. One-time scrape of Israeli brewery pages** | Gets a local corpus in an afternoon. | ToS. Goes stale. |
+| **B. One-time scrape of Israeli brewery pages** | Gets a local corpus in an afternoon. | ToS — and Untappd say undocumented-API use means **immediate suspension of the key and the associated account**, "strictly monitored". **Policy: no scraper code in this public repo at all** (`docs/13-scraping-policy.md`). |
 | **C. Manual entry as first-class path** — label photo → OCR → LLM fills fields → you correct | Always works. Handles the shop-shelf case that no API covers. | Needs real UX effort, not a hidden admin form. |
 | **D. Give up on local, only track imports** | Simplest. | Defeats a large part of the point. |
 
@@ -274,10 +282,13 @@ C for the "look at my palate" visualisations. D only if the project survives.
 
 ## D-013 — Hosting, license, privacy
 
-Open: private vs. public repo; whether the drinking log is something to publish;
-license (none / MIT / CC0 for any derived data); where the DB lives and whether
-it is backed up. Nothing decided. Note the log is personal alcohol-consumption
-data — worth a deliberate choice rather than a default.
+**CLOSED by [ADR-0001](docs/adr/0001-public-repo-mit-license.md)** — public
+repo, MIT, personal data kept out via `.env` + external DB + gitignored `data/`.
+The alternatives considered are preserved in the ADR.
+
+Still open underneath it: where the DB actually lives and how it is backed up;
+whether an engine/UI split is ever worth making (revisit only if a product
+appears).
 
 ---
 

@@ -1,10 +1,13 @@
-# Palate
+# taam · טעם
 
-A personal preference-learning system for drinks. Profile every beer, log what
-you drank and what you thought, learn a readable model of your own palate, get
-recommendations that account for mood and context.
+A personal preference-learning system for drinks.
 
-Beer first. Designed to extend to whisky, wine, and beyond.
+Profile every beer, log what you drank and what you thought, learn a readable
+model of your own palate, and get recommendations that account for mood and
+context. Beer first, designed to extend to whisky, wine, and beyond.
+
+> *taam* (טעם) is Hebrew for both **taste** and **reason**. That is the whole
+> brief: the system owes you a pick *and* why.
 
 > **New here? Read [`CONTEXT.md`](CONTEXT.md) first.** It is the map.
 
@@ -57,6 +60,7 @@ ROADMAP.md          Build order, milestones, and kill criteria.
 DEAD-ENDS.md        What we tried and why it failed. Grows over time.
 GLOSSARY.md         Terms of art, so future-you isn't guessing.
 CLAUDE.md           Working instructions for an AI session on this repo.
+LICENSE             MIT.
 
 docs/01  Vision and scope
 docs/02  Requirements
@@ -70,9 +74,10 @@ docs/09  Check-in UX
 docs/10  Evaluation
 docs/11  Multi-domain extension
 docs/12  Prior art
+docs/13  Source terms and scraping policy  <- read before writing an adapter
 docs/adr Architecture decision records (currently: none accepted)
 
-src/palate/         Code skeleton. Empty by design.
+src/taam/           Code skeleton. Empty by design.
   domains/          Per-domain descriptor vocabularies
   catalog/          Item ingest and normalisation
   profiler/         Item -> profile vector
@@ -95,6 +100,21 @@ The first thing to build is not the model — it is
 [the profiler validation experiment](docs/06-profiler.md#the-validation-experiment),
 because it is the highest-risk component and it can be falsified in a day.
 
+## Contributing / using this
+
+Public and MIT (ADR-0001). If you want to run it on your own palate, the parts
+that are yours — your check-ins, your DB — never touch this repo.
+
+**Before adding a data-source adapter, read `docs/13-scraping-policy.md`.** Some
+sources' terms are more restrictive than they look, and no scraper code belongs
+in this tree.
+
+Install the data guard once after cloning:
+
+```bash
+ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+```
+
 ## License
 
-Personal project. No license chosen yet — see `DECISIONS.md` D-013.
+MIT — see `LICENSE`.

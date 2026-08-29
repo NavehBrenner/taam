@@ -7,8 +7,11 @@ accepted ADR here, it is open, and all its alternatives remain live.
 
 ## Accepted ADRs
 
-**None.** Everything is still open. This is deliberate — see `CONTEXT.md`,
-ground rule 1.
+- [ADR-0001](0001-public-repo-mit-license.md) — public repo, MIT licensed,
+  personal data kept out. *(D-013)*
+
+Everything else remains open. That is deliberate — see `CONTEXT.md`, ground
+rule 1.
 
 ## When to write one
 
