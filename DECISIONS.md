@@ -106,9 +106,40 @@ single cheapest way to make the model work at N=10.
 | **Kaggle Beer Profile set** | ~3.2k | **labelled descriptor vectors** | free | *Not a catalog.* This is the profiler's training set. Do not confuse the two. |
 | **Scraping** | Whatever you point it at | whatever is on the page | ToS violation | Defensible as a one-time backfill of a few hundred local beers. Not as a running pipeline. |
 
-**Current lean:** catalog.beer and beer.db as the **permanent** local catalog;
-Untappd demoted to an **on-demand enrichment** source for community scores and
-Israeli coverage; manual entry as the always-available floor.
+**First, the correction that reframes this decision:** *no API returns flavour
+descriptors.* Not Untappd, not catalog.beer, not anyone. Descriptors come from
+our own profiler trained on the Kaggle labels (§06). A catalog contributes only
+name / brewery / style / ABV / IBU / a description string. Untappd was never the
+descriptor source, so "we need Untappd for the profiles" is false.
+
+### Sub-decision: how (and whether) to use Untappd at all
+
+| Option | For | Against |
+|---|---|---|
+| **A. Documented API only**, on demand, nothing held past 24h | Clean. Citable in the README. Sufficient — see the arithmetic below. | Descriptions may be thin for Israeli micro-brews. Shelf-photo bursts strain 100/hr. |
+| **B. Private local scrape**, facts only, scripts outside the repo, never published | Gets the local tail in an afternoon. Facts are uncopyrightable (*Feist*); no distribution, no realistic claim. | Contract claim survives copyright (see *hiQ*); API key is clickwrap. Risks the personal Untappd account. **Makes the public repo a demo nobody can run.** Unreproducible data upstream of M0. |
+| **C. Scrape and document it in the README** | Honest about provenance. | The worst configuration: legal risk unchanged, **enforcement risk multiplied** — a public repo under a real name is exactly what Untappd finds searching GitHub. |
+| **D. Drop Untappd entirely** | Zero terms friction; every row citable. | Loses community scores (the `α` term) and the Israeli long tail. |
+
+**Current lean:** A, with D as a live and increasingly plausible fallback.
+
+**The arithmetic that makes A sufficient:** each beer is needed **once, ever** —
+fetch, compute the profile vector, keep the vector and the facts, discard the
+description. ~2 calls per beer, ~500 distinct beers over years ≈ 1,000 calls
+total. Only the 40-bottle shelf photo (~80 calls) comes near the hourly ceiling.
+
+**And the label is a primary source.** ABV is legally required on the bottle;
+style, name and brewery are usually printed. That is most of a fact row — free,
+authoritative, offline, attached to nobody's terms. Fallback chain:
+
+```
+local catalog (beer.db / catalog.beer) → label OCR → Untappd (description only) → type it
+```
+
+**Current lean overall:** catalog.beer and beer.db as the **permanent** local
+catalog; the label as a primary source for local beers; Untappd demoted to an
+**on-demand, narrow** gap-filler for descriptions and community scores; manual
+entry as the always-available floor.
 
 ⚠️ **This lean moved because of Untappd's API terms** — they require caches to be
 purged every 24 hours and forbid using the API to build your own beer database or
@@ -129,12 +160,18 @@ all have full beer lists, and there is a country-filtered top-rated page.
 | Option | For | Against |
 |---|---|---|
 | **A. Untappd API only** | Already covers most of it. Legitimate. | 100/hr. Hebrew/English name variants will be messy. |
-| **B. One-time scrape of Israeli brewery pages** | Gets a local corpus in an afternoon. | ToS — and Untappd say undocumented-API use means **immediate suspension of the key and the associated account**, "strictly monitored". **Policy: no scraper code in this public repo at all** (`docs/13-scraping-policy.md`). |
+| **B. One-time private scrape of Israeli brewery pages** | Gets a local corpus in an afternoon. Facts aren't copyrightable; no distribution, no realistic claim. | Contract claim is independent of copyright (*hiQ v. LinkedIn*: won CFAA, **lost breach of contract**). Untappd: undocumented-API use → **immediate suspension of key and associated account**, "strictly monitored". Unreproducible data upstream of M0. **Policy either way: no scraper code in this public repo** (`docs/13-scraping-policy.md`). |
+| **B2. Label OCR as the local fact source** | ABV is legally required on the bottle; style/name/brewery usually printed. Authoritative, offline, nobody's terms, and it's the shelf-pick path anyway. | Needs the bottle in hand — no bulk seeding. Doesn't give a description. |
 | **C. Manual entry as first-class path** — label photo → OCR → LLM fills fields → you correct | Always works. Handles the shop-shelf case that no API covers. | Needs real UX effort, not a hidden admin form. |
 | **D. Give up on local, only track imports** | Simplest. | Defeats a large part of the point. |
 
-**Current lean:** A + C. C is underrated and should be built early — the
-"standing in a shop holding an unknown bottle" case is the most common real use.
+**Current lean:** A + B2 + C. The shop-shelf case is the most common real use,
+and B2/C both serve it while producing data that is unambiguously ours.
+
+**Open and load-bearing:** is Untappd's `beer_description` even populated for
+Israeli micro-breweries? Likely thin — those entries tend to be user-created with
+just a name and style. If so, Untappd's remaining role shrinks to nearly nothing
+and D-004 option D becomes the obvious answer. Part of the NVB-78 spike.
 
 ---
 

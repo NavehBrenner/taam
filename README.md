@@ -100,6 +100,23 @@ The first thing to build is not the model — it is
 [the profiler validation experiment](docs/06-profiler.md#the-validation-experiment),
 because it is the highest-risk component and it can be falsified in a day.
 
+## Data provenance
+
+Every source in this project can be named in public, which is deliberate:
+
+| Used for | Source | Terms |
+|---|---|---|
+| Profiler training labels | Kaggle Beer Profile and Ratings | dataset licence |
+| Population prior | BeerAdvocate / RateBeer dumps (UCSD) | research use, cited |
+| Permanent catalog | beer.db | public domain |
+| Permanent catalog | catalog.beer | **terms unverified — blocking** |
+| Local beers | the bottle label, via OCR, and hand entry | ours |
+| Descriptions, community scores | Untappd documented API, on demand | not retained past their cache window; attributed |
+
+No scraped data, and no scraper code. See
+[`docs/13-scraping-policy.md`](docs/13-scraping-policy.md) for the reasoning,
+including why "the facts aren't copyrighted" is true but not sufficient.
+
 ## Contributing / using this
 
 Public and MIT (ADR-0001). If you want to run it on your own palate, the parts

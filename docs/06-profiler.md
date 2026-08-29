@@ -6,6 +6,11 @@ This is the highest-risk component in the project. If profiles are noise, nothin
 downstream can work, and no amount of clever modelling will rescue it. Hence M0
 exists to try to break it before anything else is built.
 
+> **No API provides descriptors.** Not Untappd, not catalog.beer, not anyone.
+> That is why this component exists: the labels come from the Kaggle set, the
+> model is ours, and a catalog contributes only the description string and the
+> hard numerics that go in the top of it.
+
 ## Inputs
 
 Never description-only. The structured fields are *measured facts* and inferring

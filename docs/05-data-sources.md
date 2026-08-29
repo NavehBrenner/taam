@@ -8,6 +8,27 @@ Two completely different jobs that are easy to confuse:
 The Kaggle profile set is training data. catalog.beer and Untappd are catalogs.
 Using either for the other's job is a mistake.
 
+> **No catalog gives descriptors.** No API anywhere returns
+> `{bitter: 6.5, malty: 3, body: 7}`. Descriptors are produced by our profiler
+> (§06) from the Kaggle labels. A catalog supplies only
+> `name / brewery / style / ABV / IBU / description`. This is worth stating
+> because it is an easy and consequential thing to get backwards.
+
+## The lookup chain
+
+```
+local catalog (beer.db / catalog.beer)      free, permanent, citable
+  ↓ miss
+label OCR → facts off the bottle            ours, authoritative, offline
+  ↓ description still thin
+Untappd, ~2 calls, description only         the narrow remaining gap
+  ↓ miss
+type it, ~30s                               always available
+```
+
+Each beer traverses this **once**: fetch, profile, keep the vector and the facts.
+See `docs/13-scraping-policy.md` §7 for why that makes 100 calls/hour ample.
+
 ## Catalog sources
 
 ### catalog.beer
@@ -40,6 +61,15 @@ Using either for the other's job is a mistake.
 - Public domain, plain-text CSV, community maintained, Europe-heavy.
 - Breweries and beers with ABV and style; thinner on descriptions.
 - Zero legal friction; good for bulk seeding a local cache.
+
+### The bottle label itself
+- **A primary source, and the best one for local beers.** ABV is legally
+  required on the label; style, name and brewery are usually printed. That is
+  most of a fact row — free, authoritative, works with no signal in a shop
+  basement, and attached to nobody's terms.
+- Feeds the same OCR path as the shelf-pick use case, so it costs nothing extra.
+- What it does *not* give is a prose description, which is the one thing the
+  regressor wants. Hence the narrow remaining slot for Untappd.
 
 ### Manual entry
 - **Not a fallback — a primary path.** The most common real situation is

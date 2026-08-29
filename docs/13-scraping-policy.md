@@ -1,95 +1,202 @@
-# 13 — Source Terms, Scraping, and the Untappd Problem
+# 13 — Source Terms, Data Provenance, and the Untappd Question
 
-Written because the repo is public (ADR-0001), which raises the stakes on getting
-this right, and because **Untappd's API terms conflict with this project's
-architecture more sharply than expected.**
+Written because the repo is public (ADR-0001), and because working through this
+properly shrank Untappd's role from "backbone" to "a narrow gap-filler we may not
+need at all".
 
-## The finding
+**Read this before writing any data-source adapter.**
 
-Untappd's API terms of service, read directly, say roughly this:
+---
 
-| Clause | Text (paraphrased) | Conflicts with |
-|---|---|---|
-| **Cache expiry** | applications storing Untappd data **must delete their caches every 24 hours** | N-02 (permanent local cache), and the whole rate-limit survival strategy |
-| **No own database** | you may not use the API **to build your own beer database** | the `item` table (§04), which is literally a beer database |
-| **No mining or analytics** | you may not **"mine, analyze or provide analytics"** — to third parties *or to yourself* | the entire project |
-| **No resale/redistribution** | may not sell, rent or trade data acquired from the API | (fine — we don't) |
-| **Attribution** | must display "Powered by Untappd" / "Data provided by Untappd" | (fine — trivial) |
-| **Documented endpoints only** | undocumented/private API use → **immediate suspension of key and account**, "strictly monitored" | any scraping |
-| **Rate limits** | 100/hr, and circumventing limits revokes access | (already designed around) |
+## 1. The correction that started it
 
-The three rows in bold are not edge cases. **"Do not build your own beer
-database" and "do not mine or analyze" describe this project.**
+**No API returns flavour descriptors.** Not Untappd, not catalog.beer, not
+anyone. There is no endpoint anywhere that hands you
+`{bitter: 6.5, malty: 3, body: 7}`.
 
-## What this actually means
+That is the entire reason the profiler exists:
 
-Be honest about the two separate questions.
+```
+Kaggle set (3.2k beers, LABELLED descriptor vectors) ──trains──► regressor
+                                                                     │
+        any beer's description + ABV + IBU + style ───────────────►  ▼
+                                                          descriptor vector
+```
 
-**Legally**, for a personal, non-commercial project: the exposure is negligible.
-Terms of service are a contract, not criminal law; scraping public data has not
-been a computer-crime matter in the US since *hiQ v. LinkedIn* and *Van Buren*.
-Nobody sues a student over a beer app. The realistic worst case is an account and
-API-key ban.
+Labels come from Kaggle. The model is ours. An external catalog contributes, at
+most, *the description string we feed in*.
 
-**Practically**, three things follow, and they matter:
+So the question is never "which API gives us descriptors". It is only "where do
+we get name / brewery / style / ABV / IBU / a description, for beers sold near
+Beer Sheva".
 
-1. **Untappd cannot be the backbone of the catalog.** Not because of legal risk,
-   but because a source we must purge every 24 hours cannot be a permanent local
-   store, and 100 calls/hour with no cache is unusable. This is a design
-   constraint, not a compliance footnote.
-2. **A public repo is different from a private one.** Nobody audits a private
-   project. A public repo named in a search for "untappd scraper" is a
-   findable, citable ToS violation attached to your real name and your portfolio.
-   The asymmetry is the point: the downside is reputational and permanent, the
-   upside is saving a few hours of catalog work.
-3. **Their enforcement lever is the account, not the courts.** "Strictly
-   monitored", "immediate suspension of API keys and associated accounts" — and
-   the associated account may be a personal Untappd account with years of
-   check-ins in it.
+## 2. What Untappd's terms actually say
 
-## Policy for this repo
+| Clause | Conflicts with |
+|---|---|
+| Applications storing Untappd data **must delete caches every 24 hours** | N-02 permanent cache |
+| May not use the API **to build your own beer database** | the `item` table |
+| May not **"mine, analyze or provide analytics"** — to third parties *or yourself* | the project |
+| Undocumented/private API use → **immediate suspension of key and associated account**, "strictly monitored" | any scraping |
+| Attribution required; no resale; rate limits enforced (100/hr) | (fine) |
 
-1. **No scraper code in this repository.** Not disabled, not commented out, not
-   behind a flag. A public repo with a scraper in it is the specific thing worth
-   avoiding, and there is no version of it that is worth a few hours saved.
-2. **Untappd is used through the documented API only**, with attribution, inside
-   the rate limit.
-3. **The permanent local catalog is built from sources whose terms allow it** —
-   beer.db (public domain), catalog.beer (check its terms explicitly), and
-   manual entry. These are the backbone.
-4. **Untappd is used for what only it can give**, fetched on demand and held
-   under its cache rules: community score and coverage of Israeli beers that
-   nothing else has.
-5. **Anything Naveh enters by hand is his own data** and is not subject to
-   anyone's terms. The manual/photo path (D-005 option C) is not just a coverage
-   fallback — it is the clean-title path.
+## 3. Copyright: facts are free, expression is not
 
-## Consequences worth propagating
+Under *Feist*, **facts are not copyrightable**. ABV, IBU, style, beer name,
+brewery name are facts about the world. Israel's 2007 Copyright Act follows the
+same idea/expression divide, and Israel has **no EU-style *sui generis* database
+right** — which is the thing that would otherwise bite.
 
-- **D-004** — catalog.beer and beer.db move from "primary and bulk seed" to
-  "the only permanent stores". Untappd demotes to an on-demand enrichment source.
-- **D-005** — the manual/photo entry path gets **more** important, not less.
-- **§04 data model** — `community_score` needs a `fetched_at` and a policy for
-  what happens when it ages out, rather than being stored indefinitely.
-- **§10 evaluation** — the B1 baseline depends on community scores. If those
-  can't be retained, B1 has to be computed at fetch time and only the *result*
-  kept, not the underlying data.
+Two caveats:
 
-## Open questions
+- **Compilation copyright is separate.** *Feist* allows protection for a
+  compilation whose *selection and arrangement* is original. Extracting facts
+  about beers you looked up is clean; systematically cloning a whole catalog is
+  a different posture — and is also the specific thing the terms name.
+- **Prose descriptions are someone's writing.** They are the copyrightable part.
+  Convenient, because they are also the part we need least: the regressor
+  consumes a description and emits a vector. Keep the vector, discard the text.
 
-- **What exactly do catalog.beer's terms say?** Unchecked. If they permit
-  permanent storage, they become the backbone and this problem mostly resolves.
-  **Check before building on it.**
-- Is there a legitimate source of community scores with sane retention terms?
-  BeerAdvocate? The 2011 academic dumps are explicitly research-licensed and are
-  fine — but they're 2011.
-- Does the `α` (community) term actually earn its place, given this friction? If
-  the personal model is decent without it, the simplest fix to the whole problem
-  is to drop the term. **Worth measuring before designing around it.**
+## 4. Contract is an independent track — this is the part people get wrong
 
-## The general rule
+Even if data is 100% uncopyrightable, "you agreed not to do this and did it" is
+its own claim that does not care about copyright.
 
-For every source, before writing an adapter, record in this file: what the terms
-permit, what they forbid, whether derived data may be retained, and whether
-attribution is required. It is ten minutes per source and it is the difference
+*hiQ v. LinkedIn* is the case usually cited for "scraping public data is legal".
+hiQ did win the CFAA question at the Ninth Circuit. But in **November 2022 the
+district court granted LinkedIn summary judgment on breach of contract** — hiQ
+had breached the anti-scraping terms — and it ended in a consent judgment with a
+permanent injunction.
+
+The lesson from the case people quote at you: **winning on "not a computer
+crime" and "not copyrighted" still leaves the contract claim standing.**
+
+And an API key is *clickwrap* — affirmative acceptance, the strongest form of
+contract formation. Our position is worse than an anonymous page-scraper's, not
+better.
+
+## 5. Claim exists ≠ anyone acts on it
+
+| Risk | Realistic level |
+|---|---|
+| Copyright suit over fact rows | ~zero |
+| Contract claim | legally real; never pursued against an individual, non-commercial project |
+| **API key revoked** | plausible |
+| **Untappd account suspended** | plausible — and it's the one that costs something |
+
+Nobody sues a student over a beer database. Damages are nil and the PR is
+terrible. The enforcement lever is the account.
+
+## 6. The documentation asymmetry
+
+Worth stating plainly, because it decides the policy:
+
+- **Documenting a scrape changes legal exposure by roughly nothing.** The facts
+  stay uncopyrightable either way.
+- **It changes enforcement exposure a lot.** A public repo under a real name
+  saying "catalog scraped from Untappd" is exactly what someone at Untappd finds
+  searching their own name on GitHub — against terms that promise "immediate
+  suspension of API keys and associated accounts", "strictly monitored".
+
+So *scrape it and document it publicly* is the one configuration that takes the
+low-legal-risk path and staples the high-enforcement-risk path to it. Pick one:
+either a private bootstrap nobody advertises, or a documented source whose terms
+permit documenting.
+
+**There is also a quality argument, separate from risk.** This is an ML
+portfolio project; the first question a reader has is where the training data
+came from. If the honest answer is one you'd rather leave out of the README,
+that's a signal about the design, not about the risk. A data section you can
+write in full, in public, with no asterisk, is worth more than a few hundred
+rows.
+
+## 7. The arithmetic: how much do we actually need?
+
+A lookup is ~2 calls (search, then beer info). But **each beer is needed once,
+ever** — fetch it, compute the profile vector, keep the vector and the facts,
+discard the description.
+
+So it is not "100 calls/hour forever". It is **2 calls, once, per beer
+encountered in a lifetime.** ~500 distinct beers over several years ≈ 1,000
+calls total. The ceiling is never approached.
+
+The 24-hour cache rule helps rather than hurts here: it is cross-day retention
+that is forbidden, and everything looked at within one shop trip is free to hold.
+
+**The one case that strains it:** the shelf photo. 40 bottles → ~80 calls in one
+burst. Fits the hour, but only just; a second fridge in the same hour throttles.
+Design for it: batch, dedupe against what is already held, and degrade to
+*"I can rank these 30, these 10 are unknown"* rather than failing.
+
+Everything else is nowhere near: a menu of 8 taps ≈ 16 calls; one bottle in hand
+= 2.
+
+## 8. The label is a primary source
+
+The most useful realisation in this whole thread.
+
+**For Israeli beers, the bottle in your hand beats any API.** ABV is legally
+required on the label. Style is usually printed. Name and brewery obviously.
+That is most of a fact row — free, authoritative, offline, and attached to
+nobody's terms.
+
+## 9. The resulting fallback chain
+
+```
+local catalog (beer.db / catalog.beer)      free, permanent, citable
+  ↓ miss
+label OCR → facts straight off the bottle   yours, authoritative, works offline
+  ↓ description still thin
+Untappd, 2 calls, description only          the narrow remaining gap
+  ↓ miss
+type it yourself, ~30s                      always available
+```
+
+Untappd ends up filling a genuinely small slot: **prose descriptions for local
+beers absent from the free catalogs.** Worth having; not worth architecting
+around.
+
+## 10. Policy for this repo
+
+1. **No scraper code in this repository.** Not disabled, not behind a flag.
+2. **Untappd through the documented API only**, with attribution, inside the
+   rate limit, holding nothing past its cache window.
+3. **The permanent catalog is built only from sources whose terms allow it** —
+   beer.db (public domain), catalog.beer (terms unchecked — verify first), and
+   hand-entered data, which is ours and subject to nobody's terms.
+4. **Every source gets a row in §11 before an adapter is written.**
+5. **Nothing that cannot be regenerated should be upstream of a result we care
+   about.** The test for any bootstrap: could it be deleted tomorrow and the
+   project still work? If no, it is load-bearing and built on sand.
+
+## 11. Source register
+
+Fill this in before writing each adapter. Ten minutes per source; the difference
 between a portfolio project and a liability.
+
+| Source | Retention allowed? | Redistribution? | Attribution? | Verified |
+|---|---|---|---|---|
+| Kaggle Beer Profile set | yes | per dataset licence | cite | ☐ |
+| BeerAdvocate / RateBeer (UCSD) | yes, research use | no | cite papers | ☐ |
+| beer.db | yes — public domain | yes | courtesy | ☐ |
+| catalog.beer | **UNKNOWN — blocking** | ? | ? | ☐ |
+| Untappd API | **no — 24h purge** | no | required | ✅ |
+| Scotch whisky 86×12 set | yes | per source | cite | ☐ |
+| Label OCR / manual entry | ours | ours | n/a | ✅ |
+
+## 12. Open questions
+
+- **catalog.beer's terms.** The hinge. If retention is permitted it becomes the
+  backbone and most of this dissolves.
+- **Is Untappd's `beer_description` even populated for Israeli micro-breweries?**
+  Likely thin-to-empty — those entries tend to be user-created with just a name
+  and style. If so, Untappd's remaining slot shrinks to nearly nothing and the
+  label plus manual entry is the whole local story. Part of the NVB-78 spike.
+- **Does the `α` community term earn its place at all?** If the personal model is
+  decent without community scores, dropping the term removes this entire problem
+  class in one line. M4 answers this anyway — measure before designing around it.
+
+---
+
+*Not legal advice — a careful read of well-known cases for a hobby project. Do
+not rely on it if this ever becomes commercial.*
