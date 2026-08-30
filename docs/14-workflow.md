@@ -53,7 +53,9 @@ the pin, change `PIN` in that script and let CI rebuild.
 function referenced from a registry dict (`METHODS = {"style-average":
 predict_style_average, …}` in the M0 harness) as never called, and tells you to
 delete it. Those functions are the experiment's baseline and candidates.
-Filed as NVB-93; re-enable when it lands.
+Filed upstream as
+[qualety#86](https://github.com/NavehBrenner/qualety/issues/86) (NVB-93);
+re-enable when it lands.
 
 ## The plugin reflex
 
