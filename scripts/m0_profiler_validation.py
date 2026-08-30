@@ -142,7 +142,7 @@ def predict_style_average(tr: pd.DataFrame, te: pd.DataFrame) -> np.ndarray:
     ])
 
 
-def _numeric_block(tr, te):
+def _numeric_block(tr: pd.DataFrame, te: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     num_tr = tr[NUMERIC_COLS].astype(float)
     num_te = te[NUMERIC_COLS].astype(float)
     med = num_tr.median()
@@ -157,18 +157,18 @@ def _numeric_block(tr, te):
     )
 
 
-def _ridge(Xtr, ytr, Xte):
+def _ridge(Xtr: np.ndarray, ytr: np.ndarray, Xte: np.ndarray) -> np.ndarray:
     model = RidgeCV(alphas=np.logspace(-2, 4, 25))
     model.fit(Xtr, ytr)
     return model.predict(Xte)
 
 
-def predict_numerics_only(tr, te):
+def predict_numerics_only(tr: pd.DataFrame, te: pd.DataFrame) -> np.ndarray:
     Xtr, Xte = _numeric_block(tr, te)
     return _ridge(Xtr, tr[CANDIDATE_AXES].to_numpy(), Xte)
 
 
-def predict_text_and_numerics(tr, te):
+def predict_text_and_numerics(tr: pd.DataFrame, te: pd.DataFrame) -> np.ndarray:
     """The candidate profiler: TF-IDF over the description + hard numerics.
 
     TF-IDF rather than sentence embeddings on purpose: no model download, fully
@@ -278,8 +278,8 @@ def report(scores: dict[str, dict[str, float]]) -> int:
     if not headline_ok:
         print("  -> weaker than hoped. Proceed, but expect a low ceiling in M4.")
     if no_lift:
-        print(f"\nPredictable, but style already told us "
-              f"(no lift over baseline):\n  " + ", ".join(no_lift))
+        print("\nPredictable, but style already told us "
+              "(no lift over baseline):\n  " + ", ".join(no_lift))
     if weak:
         print(f"\nBelow r={USEFUL_R} — DROP these from the vocabulary (D-001):")
         print("  " + ", ".join(weak))

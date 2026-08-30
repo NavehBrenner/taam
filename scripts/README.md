@@ -1,7 +1,15 @@
 # Scripts
 
-One-off ingest and experiment scripts. Each should be runnable standalone with a
-fixed seed and should print its numbers (N-05).
+`qualety.sh` is the code-quality entry point, not an experiment — it builds a
+pinned qualety from source into `.tools/` and runs it. See `docs/14-workflow.md`.
+
+```bash
+./scripts/qualety.sh              # check the repo
+./scripts/qualety.sh check --diff # only what changed vs the merge base
+```
+
+Everything else here is one-off ingest and experiment scripts. Each should be
+runnable standalone with a fixed seed and should print its numbers (N-05).
 
 Planned, in roadmap order:
 

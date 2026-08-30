@@ -75,6 +75,7 @@ docs/10  Evaluation
 docs/11  Multi-domain extension
 docs/12  Prior art
 docs/13  Source terms and scraping policy  <- read before writing an adapter
+docs/14  Working on this repo (Linear -> branch -> PR, and the checks)
 docs/adr Architecture decision records (currently: none accepted)
 
 src/taam/           Code skeleton. Empty by design.
@@ -96,7 +97,7 @@ tests/
 ## Quickstart
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt          # runtime deps + pytest + mypy
 ln -sf ../../scripts/pre-commit .git/hooks/pre-commit   # data guard, do this once
 
 # prove the M0 harness works (synthetic data, no download):
@@ -105,6 +106,16 @@ python scripts/m0_profiler_validation.py --self-test
 
 # then get the data (see data/README.md) and run the real experiment:
 python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv
+```
+
+The three checks CI runs, which you can run at a desk (`qualety.sh` builds a
+pinned [qualety](https://github.com/NavehBrenner/qualety) from source on first
+use, then caches it):
+
+```bash
+./scripts/qualety.sh    # ruff + structural rules
+pytest
+mypy
 ```
 
 The first thing to run is not the model — it is
@@ -137,6 +148,10 @@ that are yours — your check-ins, your DB — never touch this repo.
 **Before adding a data-source adapter, read `docs/13-scraping-policy.md`.** Some
 sources' terms are more restrictive than they look, and no scraper code belongs
 in this tree.
+
+**Read [`docs/14-workflow.md`](docs/14-workflow.md) before changing anything.**
+Every change starts as a Linear issue, lands on a branch named by that issue,
+and arrives through a PR; `main` is protected and only Naveh merges.
 
 Install the data guard once after cloning:
 

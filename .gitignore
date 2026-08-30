@@ -23,3 +23,10 @@ venv/
 # os
 .DS_Store
 Thumbs.db
+
+# tooling
+# .tools/  = pinned qualety build (scripts/qualety.sh)
+# .qualety/ = qualety's generated biome/ruff configs
+.tools/
+.qualety/
+.mypy_cache/
