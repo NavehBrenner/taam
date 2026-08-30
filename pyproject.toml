@@ -2,7 +2,7 @@
 name = "taam"
 version = "0.0.0"
 description = "Personal preference learning for drinks. Beer first, domain-agnostic by design."
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -11,10 +11,8 @@ where = ["src"]
 line-length = 100
 
 [tool.mypy]
+python_version = "3.12"
 files = ["src", "scripts", "tests"]
-# No python_version pin: numpy's bundled stubs need 3.12+ to parse, so mypy
-# checks against whatever interpreter runs it. pyproject says >=3.10, so 3.10/3.11
-# compatibility is not actually type-checked. Bump requires-python if that bites.
 # numpy/pandas ship stubs; scipy and sklearn do not, and vendoring stubs for a
 # repo this size is not worth it. Revisit if a real type bug slips through.
 ignore_missing_imports = true
