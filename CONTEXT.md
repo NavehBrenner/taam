@@ -84,9 +84,13 @@ should be read before anything is built on it.** Details in
 
 ## Status
 
-**Phase 0 — design only.** No code has been written. No data has been acquired.
-One decision has been made (ADR-0001: public repo, MIT). Everything else in this
-repo is a plan.
+**Phase 0 → M0.** One decision made (ADR-0001: public repo, MIT). The M0
+falsification harness is written and its controls pass; it needs only the Kaggle
+CSV to produce a real verdict. Everything else in this repo is still a plan.
+
+Run `python tests/test_m0_harness.py` first — it proves the harness can both
+detect a signal and refuse to endorse noise. The verdict is only worth trusting
+because that second control exists.
 
 ## Tracking
 

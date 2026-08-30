@@ -5,9 +5,21 @@ fixed seed and should print its numbers (N-05).
 
 Planned, in roadmap order:
 
-- `m0_profiler_validation.py` — the falsification experiment (see docs/06 and
-  ROADMAP M0). **Build this first.** It can kill the project in a day, which is
-  the most valuable thing any script here can do.
+- `m0_profiler_validation.py` — **WRITTEN, ready to run.** The falsification
+  experiment (docs/06, ROADMAP M0). Compares a style-average baseline, a
+  numerics-only ridge, and TF-IDF-text + numerics ridge against the labelled
+  Kaggle descriptors, and prints a verdict including the kill criterion.
+
+  ```bash
+  # sanity-check the harness itself, no download needed:
+  python scripts/m0_profiler_validation.py --self-test
+
+  # the real thing, once data/raw/beer_profile_and_ratings.csv exists:
+  python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv
+  ```
+
+  Both controls for the harness live in `tests/test_m0_harness.py` and must
+  pass before its verdict is trusted.
 - `m1_profile_structure.py` — PCA / clustering of the labelled profile vectors.
 - `fetch_catalog.py` — cached pulls from catalog.beer / Untappd / beer.db.
 - `m4_evaluate.py` — model vs. B0/B1/B2 across N. Produces the crossover plot.

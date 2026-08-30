@@ -86,6 +86,7 @@ src/taam/           Code skeleton. Empty by design.
   storage/          Persistence
 
 notebooks/          Exploration. Expect mess here; that's fine.
+tests/              Controls for the experiment harnesses.
 data/raw            Downloaded datasets. Gitignored.
 data/processed      Derived artefacts. Gitignored.
 scripts/            One-off ingest and evaluation scripts.
@@ -94,11 +95,22 @@ tests/
 
 ## Quickstart
 
-There is nothing to run yet. When there is, it will go here.
+```bash
+pip install -r requirements.txt
+ln -sf ../../scripts/pre-commit .git/hooks/pre-commit   # data guard, do this once
 
-The first thing to build is not the model — it is
+# prove the M0 harness works (synthetic data, no download):
+python tests/test_m0_harness.py
+python scripts/m0_profiler_validation.py --self-test
+
+# then get the data (see data/README.md) and run the real experiment:
+python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv
+```
+
+The first thing to run is not the model — it is
 [the profiler validation experiment](docs/06-profiler.md#the-validation-experiment),
-because it is the highest-risk component and it can be falsified in a day.
+because it is the highest-risk component and it can be falsified in a day. It is
+written and its controls pass; it needs only the Kaggle CSV.
 
 ## Data provenance
 

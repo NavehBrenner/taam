@@ -14,6 +14,16 @@ one is a success: it means we learned something cheaply. Record it in
 **Do this first.** It is the highest-risk component and it can be settled in a day.
 Everything downstream is worthless if item profiles are garbage.
 
+> **Status: harness written and verified** —
+> `scripts/m0_profiler_validation.py`, controls in `tests/test_m0_harness.py`.
+> Needs only `data/raw/beer_profile_and_ratings.csv` (see `data/README.md`).
+> It runs a style-average baseline, a numerics-only ridge, and a
+> TF-IDF-text + numerics ridge, then prints per-axis Pearson r and a verdict.
+>
+> TF-IDF rather than sentence embeddings deliberately: no model download, fully
+> deterministic, and a fair fight at ~3k rows. If it beats the baseline,
+> swapping in a sentence encoder is a tuning step, not a rescue.
+
 1. Download the Kaggle Beer Profile set (~3.2k beers, labelled descriptor vectors).
 2. Hold out 200 beers.
 3. Profile them **three ways**, from name + brewery + style + description only:
