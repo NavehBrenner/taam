@@ -14,20 +14,58 @@ Using either for the other's job is a mistake.
 > `name / brewery / style / ABV / IBU / description`. This is worth stating
 > because it is an easy and consequential thing to get backwards.
 
+## What each source actually provides
+
+The whole picture on one screen, measured rather than assumed. **Read the
+Israeli columns as the real ones** — global coverage is not the constraint here.
+
+| Source | Terms | Keep forever? | Israeli coverage | Description for Israeli beer | Community score | Verdict |
+|---|---|---|---|---|---|---|
+| **catalog.beer** | CC BY 4.0 ✅ | **yes** | **3/12 breweries, 10 beers** | **0/10 — empty** | no | Backbone *outside* Israel. Locally it repeats the label. |
+| **Untappd** | restrictive ❌ | **no — 24h purge** | good (brewery lists exist for all 12) | ⏳ **unmeasured — needs an API key** | **yes — only source** | The one open question. See below. |
+| **beer.db** | public domain ✅ | yes | **zero rows, dead since 2014** | n/a | no | ❌ Falsified — DE-001. |
+| **Bottle label** | ours ✅ | yes | **100% of what's in your hand** | never — no prose on a label | no | Authoritative for facts. ABV is legally required. |
+| **Manual entry** | ours ✅ | yes | **100%** | whatever you type | no | The floor. Always works. |
+| **Kaggle profile set** | per dataset ✅ | yes | *not a catalog* | *not a catalog* | ratings, not per-beer | **Training data** — the descriptor labels. |
+| **BeerAdvocate / RateBeer (UCSD)** | research use ✅ | yes | *not a catalog* | *not a catalog* | per-user histories | **Prior data** for D-007. |
+
+Reading the table across, the shape of the problem is stark: for an Israeli
+beer, **every source with usable terms provides exactly what is printed on the
+bottle, and nothing more.** The two things a catalog could uniquely add — a
+prose description for the profiler, and a community score for the `α` term —
+are available only from Untappd, whose terms forbid keeping either.
+
+So there are exactly two open levers, and NVB-78 has narrowed the project down
+to them:
+
+1. **Does Untappd have descriptions for local beers?** If no, D-002 option B
+   (the trained regressor) cannot run on the local tail at all, and the profiler
+   must fall back to an LLM or manual entry for every Israeli beer. Run
+   `scripts/untappd_description_check.py` once a key exists.
+2. **Does the `α` community term earn its place?** If the personal model is
+   decent without community scores, Untappd's last unique contribution
+   disappears and D-004 option D (drop it entirely) costs nothing. **M4 answers
+   this for free** — measure before designing around it.
+
 ## The lookup chain
 
 ```
-local catalog (beer.db / catalog.beer)      free, permanent, citable
-  ↓ miss
+catalog.beer                                free, permanent, citable — but see above
+  ↓ miss (the normal case for Israeli beer)
 label OCR → facts off the bottle            ours, authoritative, offline
   ↓ description still thin
-Untappd, ~2 calls, description only         the narrow remaining gap
+Untappd, ~2 calls, description only         the narrow remaining gap, if it has one
   ↓ miss
 type it, ~30s                               always available
 ```
 
 Each beer traverses this **once**: fetch, profile, keep the vector and the facts.
 See `docs/13-scraping-policy.md` §7 for why that makes 100 calls/hour ample.
+
+**Note the chain is now much shorter in practice than it looks.** beer.db is
+gone, and for a local beer catalog.beer contributes identifiers rather than
+information — so the realistic path for most Israeli check-ins starts at the
+label.
 
 ## Catalog sources
 
@@ -183,7 +221,12 @@ can eat. Its value here is clean terms and clean identifiers, not information.
 
 - **Is Untappd's `beer_description` populated for Israeli micro-brews?** Still
   unanswered — it needs an API key, and answering it by scraping is precisely
-  what `docs/13-scraping-policy.md` §10.1 forbids. Now the single highest-value
+  what `docs/13-scraping-policy.md` §10.1 forbids. **The harness is written and
+  its controls pass** — `scripts/untappd_description_check.py`, 20 Israeli beers
+  across the same breweries catalog.beer was measured on. It records description
+  *lengths* only, never the text, so the result is publishable here. Supply
+  `UNTAPPD_CLIENT_ID` / `UNTAPPD_CLIENT_SECRET` and it produces the verdict in
+  about a minute. Now the single highest-value
   unknown left in the source strategy: catalog.beer has been shown to supply no
   descriptions locally, so if Untappd has none either, **no source does**, the
   regressor has no text to eat for local beers, and D-002 option B cannot run on
