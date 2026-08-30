@@ -19,15 +19,58 @@ Using either for the other's job is a mistake.
 The whole picture on one screen, measured rather than assumed. **Read the
 Israeli columns as the real ones** — global coverage is not the constraint here.
 
-| Source | Terms | Keep forever? | Israeli coverage | Description for Israeli beer | Community score | Verdict |
-|---|---|---|---|---|---|---|
-| **catalog.beer** | CC BY 4.0 ✅ | **yes** | **3/12 breweries, 10 beers** | **0/10 — empty** | no | Backbone *outside* Israel. Locally it repeats the label. |
-| **Untappd** | restrictive ❌ | **no — 24h purge** | good (brewery lists exist for all 12) | ⏳ **unmeasured — needs an API key** | **yes — only source** | The one open question. See below. |
-| **beer.db** | public domain ✅ | yes | **zero rows, dead since 2014** | n/a | no | ❌ Falsified — DE-001. |
-| **Bottle label** | ours ✅ | yes | **100% of what's in your hand** | never — no prose on a label | no | Authoritative for facts. ABV is legally required. |
-| **Manual entry** | ours ✅ | yes | **100%** | whatever you type | no | The floor. Always works. |
-| **Kaggle profile set** | per dataset ✅ | yes | *not a catalog* | *not a catalog* | ratings, not per-beer | **Training data** — the descriptor labels. |
-| **BeerAdvocate / RateBeer (UCSD)** | research use ✅ | yes | *not a catalog* | *not a catalog* | per-user histories | **Prior data** for D-007. |
+| Source | Terms | Keep forever? | Israeli coverage | Description for Israeli beer | Verdict |
+|---|---|---|---|---|---|
+| **Brewery's own site** | prose is theirs ⚠️ | facts yes, vector yes | ~most craft breweries | ✅ **real tasting notes, in Hebrew** | **The local description source.** See below. |
+| **catalog.beer** | CC BY 4.0 ✅ | yes | 3/12 breweries, 10 beers | ❌ 0/10 — empty | Backbone *outside* Israel. Locally it repeats the label. |
+| **Bottle label** | ours ✅ | yes | 100% of what's in your hand | ❌ no prose on a label | Authoritative for facts. ABV legally required. |
+| **Manual entry** | ours ✅ | yes | 100% | whatever you type | The floor. Always works. |
+| **Open Food Facts** | ODbL ✅ | yes | mass-market only, **no craft** | ❌ none | **Barcodes.** Useful for identity (D-015), not for profiling. |
+| ~~**Untappd**~~ | restrictive ❌ | no | (good, but moot) | (unknown, and now unknowable) | ❌ **API access closed — DE-002.** |
+| ~~**beer.db**~~ | public domain ✅ | yes | **zero rows, dead since 2014** | n/a | ❌ Falsified — DE-001. |
+| **Kaggle profile set** | per dataset ✅ | yes | *not a catalog* | *not a catalog* | **Training data** — the descriptor labels. |
+| **BeerAdvocate / RateBeer (UCSD)** | research use ✅ | yes | *not a catalog* | *not a catalog* | **Prior data** for D-007, and now the only community-score source. |
+
+### The brewery's own site is the local description source
+
+Found 2026-08-30, after Untappd closed. Obvious in hindsight and better than
+what it replaces: **the people who made the beer publish tasting notes for it.**
+
+| Brewery | Beers listed | Per-beer tasting notes |
+|---|---|---|
+| Alexander | 16 | ✅ ~100 chars each |
+| Beer Bazaar | 8 | ✅ |
+| Malka | 5 | ❌ name, price, size only |
+
+Roughly two thirds of the sampled breweries publish usable prose, and it is
+**descriptor-bearing in exactly the way the profiler needs**. Alexander's BLAZER:
+
+> "בירה זהובה עם ראש קצף לבן, מאלטית, חלקה וקרמית, מתחילה עם מתיקות מרומזת
+> וממשיכה עם מרירות מדוייקת"
+>
+> *golden, white foam head, malty, smooth and creamy, opens with hinted
+> sweetness and continues with precise bitterness*
+
+That single sentence carries malty, sweet, bitter and body — four axes, from the
+manufacturer, for free. Compare Beer Bazaar's *"פירותי ומרענן, גוף קליל, מרירות
+עדינה"* (fruity and refreshing, light body, delicate bitterness). This is
+**better** than Untappd's user-written entries would have been, because it is
+first-party and consistent within a brewery.
+
+**Three caveats, and the first is a genuinely new problem:**
+
+1. **It is in Hebrew, and the profiler trains on English.** M0's text path is
+   TF-IDF over the English Kaggle descriptions; a Hebrew string is not merely
+   unseen vocabulary, it shares no tokens at all. This is a real fork and it did
+   not exist before — see the new sub-decision under D-002.
+2. **Prose is the copyrightable part** (`docs/13` §3). Same rule as everywhere
+   else: run it through the profiler, keep the vector, discard the text. Do not
+   mirror brewery copy into the repo.
+3. **No API, and `docs/13` §10.1 forbids scraper code here.** The realistic path
+   is the manual-entry flow (D-005 option C) with paste-a-description as a field
+   — ~10 breweries × ~10 beers is an evening of work, once, by hand. It is also
+   exactly the case where a one-time collection is defensible: a manufacturer's
+   public product page, no API key, no clickwrap, no contract.
 
 Reading the table across, the shape of the problem is stark: for an Israeli
 beer, **every source with usable terms provides exactly what is printed on the
@@ -35,17 +78,22 @@ bottle, and nothing more.** The two things a catalog could uniquely add — a
 prose description for the profiler, and a community score for the `α` term —
 are available only from Untappd, whose terms forbid keeping either.
 
-So there are exactly two open levers, and NVB-78 has narrowed the project down
-to them:
+**Updated 2026-08-30, after Untappd closed its API (DE-002).** The paragraph
+above still describes the *catalogs* correctly, but the conclusion changed: the
+description gap is filled not by a catalog at all, but by the breweries
+themselves. The two remaining questions are:
 
-1. **Does Untappd have descriptions for local beers?** If no, D-002 option B
-   (the trained regressor) cannot run on the local tail at all, and the profiler
-   must fall back to an LLM or manual entry for every Israeli beer. Run
-   `scripts/untappd_description_check.py` once a key exists.
-2. **Does the `α` community term earn its place?** If the personal model is
-   decent without community scores, Untappd's last unique contribution
-   disappears and D-004 option D (drop it entirely) costs nothing. **M4 answers
-   this for free** — measure before designing around it.
+1. **Do descriptions even matter?** Unmeasured, and cheap to settle. **M0
+   already answers this**: it scores a numerics-only ridge (ABV / IBU / colour /
+   style one-hot) against a TF-IDF-text + numerics ridge. If text adds little
+   over the numerics, the entire description problem — Hebrew, copyright,
+   manual collection, all of it — evaporates, and the label alone is enough.
+   **This is the single highest-value thing left to run, and it needs only a
+   free Kaggle download.**
+2. **Does the `α` community term earn its place?** No longer a design choice:
+   with Untappd gone there is **no per-beer community score available at all**,
+   so v1 simply has none. M4's second baseline measures what that costs, for
+   free. If it matters, the UCSD dumps are the replacement.
 
 ## The lookup chain
 
@@ -53,9 +101,9 @@ to them:
 catalog.beer                                free, permanent, citable — but see above
   ↓ miss (the normal case for Israeli beer)
 label OCR → facts off the bottle            ours, authoritative, offline
-  ↓ description still thin
-Untappd, ~2 calls, description only         the narrow remaining gap, if it has one
-  ↓ miss
+  ↓ no description
+brewery's own page, once per beer           first-party tasting notes, in Hebrew
+  ↓ brewery publishes none
 type it, ~30s                               always available
 ```
 
@@ -219,14 +267,19 @@ can eat. Its value here is clean terms and clean identifiers, not information.
 
 **Still open:**
 
-- **Is Untappd's `beer_description` populated for Israeli micro-brews?** Still
-  unanswered — it needs an API key, and answering it by scraping is precisely
-  what `docs/13-scraping-policy.md` §10.1 forbids. **The harness is written and
-  its controls pass** — `scripts/untappd_description_check.py`, 20 Israeli beers
-  across the same breweries catalog.beer was measured on. It records description
-  *lengths* only, never the text, so the result is publishable here. Supply
-  `UNTAPPD_CLIENT_ID` / `UNTAPPD_CLIENT_SECRET` and it produces the verdict in
-  about a minute. Now the single highest-value
+- ~~**Is Untappd's `beer_description` populated for Israeli micro-brews?**~~
+  **Closed unanswered, 2026-08-30 — and it no longer matters.** Untappd shut
+  public API registration (DE-002), so the question is unanswerable *and* moot:
+  the description gap is filled by the breweries' own pages instead. The harness
+  (`scripts/untappd_description_check.py`) and its controls are kept because
+  they cost nothing to keep and would settle it in a minute if a key ever
+  appears — but nothing should be planned around it.
+- **How much does the description actually contribute, versus ABV / IBU / style
+  alone?** The question that now governs how much effort the local description
+  problem deserves. **M0 measures it** — see the two ridge variants in
+  `scripts/m0_profiler_validation.py`. Blocked only on a free Kaggle download.
+- **How do we feed Hebrew descriptions to an English-trained profiler?** New as
+  of 2026-08-30. See the sub-decision added to D-002. Now the single highest-value
   unknown left in the source strategy: catalog.beer has been shown to supply no
   descriptions locally, so if Untappd has none either, **no source does**, the
   regressor has no text to eat for local beers, and D-002 option B cannot run on

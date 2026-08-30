@@ -92,9 +92,28 @@ So the terms problem is solved and a coverage problem replaced it. For Israeli
 beer, no catalog supplies anything the bottle label does not — which makes the
 label-OCR and manual-entry paths load-bearing rather than a convenience.
 
-**The open question that could still collapse Untappd's role entirely:** is its
-`beer_description` populated for Israeli micro-brews? It needs an API key to
-answer, and it is the last candidate source of prose for a local beer.
+**Untappd is out entirely (2026-08-30, DE-002)** — they closed general API
+registration and now require contacting them for a key. So the terms problem
+solved itself by the source disappearing, and **every remaining source has clean
+terms.** The cost: the `α` community term has no data source, so v1 has none and
+M4 measures what that costs.
+
+**What replaced it is better:** the breweries publish tasting notes for their own
+beers. Alexander lists 16 with ~100-character Hebrew descriptions carrying malty
+/ sweet / bitter / body in a single sentence. First-party, no API, no terms
+conflict — collected by hand through the manual-entry flow. New problem, new
+fork: those descriptions are in Hebrew and the profiler trains on English. See
+D-002's sub-decision.
+
+**Also corrected 2026-08-30: Untappd's app does build a taste profile and does
+recommend from it.** `docs/12` previously claimed it didn't; that was wrong. The
+remaining gap is narrower and sharper — nobody *shows you the model*. That is
+still the half of this project worth doing.
+
+**The highest-value thing left to run is M0**, and it needs only a free Kaggle
+download. Besides validating the profiler, it measures how much the description
+text adds over ABV/IBU/style alone — which decides how much the Hebrew problem,
+the manual collection and the whole local-description question are even worth.
 
 ## Status
 

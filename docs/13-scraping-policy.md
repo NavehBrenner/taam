@@ -180,9 +180,36 @@ between a portfolio project and a liability.
 | BeerAdvocate / RateBeer (UCSD) | yes, research use | no | cite papers | ☐ |
 | beer.db | yes — public domain | yes | courtesy | ✅ *(but empty — DE-001)* |
 | catalog.beer | **yes — CC BY 4.0** | **yes, incl. commercial** | **required** | ✅ |
-| Untappd API | **no — 24h purge** | no | required | ✅ |
+| ~~Untappd API~~ | **no — 24h purge** | no | required | ❌ **access closed, DE-002** |
+| Open Food Facts | yes — ODbL | yes, share-alike | required | ✅ *(barcodes only)* |
+| Brewery's own website | facts yes; **prose is theirs** | **no — keep the vector, not the text** | courtesy | ✅ |
 | Scotch whisky 86×12 set | yes | per source | cite | ☐ |
 | Label OCR / manual entry | ours | ours | n/a | ✅ |
+
+### Untappd — closed, 2026-08-30
+
+General API registration is shut following abuse; keys now require contacting
+Untappd directly. Naveh declined to apply. **This document's §2–§6 analysis was
+correct and is now historical**: the constraint that actually removed Untappd was
+access, not terms.
+
+Worth stating because it is the happy ending to this whole document: **with
+Untappd gone, every remaining source has clean terms.** CC BY 4.0, ODbL, public
+domain, research-use, or ours. There is no longer any source in the design whose
+terms conflict with permanent retention. §2's table describes a source we no
+longer use.
+
+### Brewery websites — the replacement, and its one rule
+
+The breweries publish tasting notes for their own beers (`docs/05`). No API, no
+key, no clickwrap, no contract — a manufacturer's public product page. That makes
+the *contract* track in §4, the one that actually sank Untappd, inapplicable.
+
+Copyright still applies to the prose, so the §3 rule governs and is not optional:
+**run it through the profiler, keep the vector, discard the text.** Do not mirror
+brewery copy into this repo. Collection happens by hand through the manual-entry
+flow — §10.1 still forbids scraper code here, and at ~10 breweries the automation
+would not pay for itself anyway.
 
 ### catalog.beer — verified 2026-08-30 (NVB-78)
 
