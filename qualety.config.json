@@ -3,5 +3,5 @@
   "rules": {
     "python/no-unnecessary-def": "off"
   },
-  "exclude": ["**/.tools/**", "**/.venv/**"]
+  "exclude": ["**/.venv/**"]
 }

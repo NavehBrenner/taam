@@ -123,7 +123,7 @@ def make_synthetic(n: int = 1200, seed: int = SEED) -> pd.DataFrame:
             "ABV": abv, "Min IBU": abv * 3 + rng.normal(0, 5),
             "Max IBU": abv * 5 + rng.normal(0, 5),
         }
-        row.update(dict(zip(CANDIDATE_AXES, vec)))
+        row.update(dict(zip(CANDIDATE_AXES, vec, strict=True)))
         rows.append(row)
     return pd.DataFrame(rows)
 

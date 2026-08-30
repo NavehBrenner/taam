@@ -108,12 +108,12 @@ python scripts/m0_profiler_validation.py --self-test
 python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv
 ```
 
-The three checks CI runs, which you can run at a desk (`qualety.sh` builds a
-pinned [qualety](https://github.com/NavehBrenner/qualety) from source on first
-use, then caches it):
+The three checks CI runs, which you can run at a desk
+([qualety](https://github.com/NavehBrenner/qualety) came in with the dev
+requirements):
 
 ```bash
-./scripts/qualety.sh    # ruff + structural rules
+qualety check    # ruff + structural rules
 pytest
 mypy
 ```

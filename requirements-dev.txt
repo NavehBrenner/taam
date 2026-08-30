@@ -2,3 +2,4 @@
 
 pytest
 mypy
+qualety==0.1.3

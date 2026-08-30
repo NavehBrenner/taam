@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -18,23 +17,10 @@ jobs:
           cache-dependency-path: requirements*.txt
       - run: pip install -r requirements-dev.txt
 
-      # qualety is built from a pinned source checkout (see scripts/qualety.sh).
-      # The cache key is the script itself, which is where the pin lives.
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        with:
-          path: .tools/qualety
-          key: qualety-${{ runner.os }}-${{ hashFiles('scripts/qualety.sh') }}
-
       # Each check reports even if an earlier one failed — one red step should
       # not hide the other two.
       - name: qualety
-        run: ./scripts/qualety.sh check
+        run: qualety check
       - name: pytest
         if: ${{ !cancelled() }}
         run: pytest

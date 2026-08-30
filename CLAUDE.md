@@ -48,12 +48,15 @@ Full detail in `docs/14-workflow.md`. The short version:
 4. Use `git switch`, not `git checkout`.
 5. **The plugin reflex.** When Naveh asks for a code change, ask whether the
    rule behind it can be enforced by a qualety rule instead of remembered by
-   the next session. If it is statically detectable, file it in the
-   `code-invariants` Linear project. Instructions here are advisory; CI is not.
-6. The three checks are `./scripts/qualety.sh`, `pytest`, `mypy`. Run them
-   before opening a PR — CI runs exactly the same three.
-7. If qualety flags correct code, file the false positive against qualety and
-   disable the rule with a pointer. Do not contort the code to please it.
+   the next session. Instructions here are advisory; CI is not.
+6. **Anything about qualety is filed upstream**, with
+   `gh issue create -R NavehBrenner/qualety` — a new rule, a false positive, a
+   bug. Never a Linear issue in this project: that board is for taam's work,
+   and a Linear issue is invisible to whoever fixes qualety.
+7. If qualety flags correct code, file the false positive upstream and disable
+   the rule with a pointer to that issue. Do not contort the code to please it.
+8. The three checks are `qualety check`, `pytest`, `mypy`. Run them before
+   opening a PR — CI runs exactly the same three.
 
 ## Style
 

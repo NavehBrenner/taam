@@ -29,7 +29,7 @@ Three, all run in CI on every PR (`.github/workflows/ci.yml`), all runnable at a
 desk:
 
 ```bash
-./scripts/qualety.sh    # code quality: ruff + qualety's python/* rules
+qualety check    # ruff + qualety's python/* rules
 pytest
 mypy
 ```
@@ -45,17 +45,24 @@ Config is `qualety.config.json`. Note that qualety generates its own
 `.qualety/ruff.toml` and does **not** read `[tool.ruff]` from `pyproject.toml`;
 that section survives only for anyone running `ruff` directly.
 
-qualety is not published to npm or PyPI yet, so `scripts/qualety.sh` builds a
-**pinned commit** from source into `.tools/` on first run and caches it. To move
-the pin, change `PIN` in that script and let CI rebuild.
+It installs from PyPI and is **pinned exactly** in `requirements-dev.txt`
+(`qualety==0.1.3`). Pinned rather than floating because a new qualety version
+is a new set of enforced rules, and that should arrive in a PR you can read,
+not on a Tuesday because CI reinstalled. Bump it deliberately.
 
-**Currently disabled:** `python/no-unnecessary-def`, because it treats a
-function referenced from a registry dict (`METHODS = {"style-average":
-predict_style_average, …}` in the M0 harness) as never called, and tells you to
-delete it. Those functions are the experiment's baseline and candidates.
+**Currently disabled:** `python/no-unnecessary-def`. It counts call sites
+statically, and the M0 harness is a standalone script that `tests/` loads via
+`importlib.util.spec_from_file_location` — so the rule cannot see the test's
+calls and reports tested functions as unused, with a suggestion to delete them.
 Filed upstream as
-[qualety#86](https://github.com/NavehBrenner/qualety/issues/86) (NVB-93);
-re-enable when it lands.
+[qualety#100](https://github.com/NavehBrenner/qualety/issues/100); re-enable
+when it lands. (Its sibling false positive, registry-dict references, was
+[#86](https://github.com/NavehBrenner/qualety/issues/86) and is fixed in
+0.1.3.)
+
+qualety has no inline suppression (`# noqa`-style), so one false positive costs
+the rule repo-wide. That is why the disable is a whole rule and not one line,
+and it is raised in #100.
 
 ## The plugin reflex
 
@@ -72,8 +79,11 @@ The reflex, in order:
 2. Ask: is this an instance of a class, or a one-off? A one-off stops here.
 3. Is the class statically detectable from the AST? If not, it stops here too —
    write it into `CLAUDE.md` and accept that it is advisory.
-4. If it is detectable, file a `code-invariants` issue for the rule. Reference
-   the taam change that motivated it, so the rule has a real example behind it.
+4. If it is detectable, **file an issue on
+   [NavehBrenner/qualety](https://github.com/NavehBrenner/qualety/issues)** —
+   upstream, on the repo, not in Linear. That is where qualety's work is
+   tracked and where the fix will be written. Quote the taam code that
+   motivated it, so the rule has a real example behind it.
 
 This repo has invariants that are good candidates and are not yet rules — for
 instance `CLAUDE.md` rule 6, "nothing domain-specific goes in `preference/` or
@@ -82,4 +92,10 @@ exactly the kind of architectural fitness function qualety exists for.
 
 The reflex runs the other way too. If qualety flags code that is actually
 correct, do **not** contort the code to please it — file the false positive
-against qualety and disable the rule with a pointer, as above.
+**upstream on the qualety repo** and disable the rule with a pointer to that
+issue, as above.
+
+Both directions land in the same place: **qualety issues go to
+`gh issue create -R NavehBrenner/qualety`, never to a Linear issue in this
+project.** A Linear issue here is invisible to whoever fixes qualety, and taam's
+own Linear board is for taam's work.
