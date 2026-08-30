@@ -20,6 +20,26 @@ Planned, in roadmap order:
 
   Both controls for the harness live in `tests/test_m0_harness.py` and must
   pass before its verdict is trusted.
+- `untappd_description_check.py` — **WRITTEN, needs an API key.** Settles the
+  last open question in the source strategy (NVB-78): does Untappd have prose
+  for Israeli beers, when catalog.beer was measured to have none? If it does not,
+  no source does, and the trained regressor (D-002 option B) cannot run on local
+  beer at all.
+
+  ```bash
+  # the verdict logic's controls, no network and no key needed:
+  python scripts/untappd_description_check.py --self-test
+
+  # the real thing (~40 calls, well inside the 100/hour limit):
+  export UNTAPPD_CLIENT_ID=... UNTAPPD_CLIENT_SECRET=...
+  python scripts/untappd_description_check.py --out docs/data/untappd-il-check.md
+  ```
+
+  Records description **lengths only, never the text** — Untappd's terms require
+  a 24h purge and the prose is the copyrightable part (docs/13 §3). That is what
+  makes its output publishable in a public repo. Documented API only; it must
+  never grow a scraping path (§10.1).
 - `m1_profile_structure.py` — PCA / clustering of the labelled profile vectors.
-- `fetch_catalog.py` — cached pulls from catalog.beer / Untappd / beer.db.
+- `fetch_catalog.py` — cached pulls from catalog.beer / Untappd. (Not beer.db —
+  that source is dead, see DEAD-ENDS DE-001.)
 - `m4_evaluate.py` — model vs. B0/B1/B2 across N. Produces the crossover plot.

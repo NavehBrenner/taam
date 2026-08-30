@@ -20,10 +20,10 @@ re-deriving it.
 | ID | Decision | Current lean | Status |
 |---|---|---|---|
 | D-001 | Beer descriptor vocabulary | Kaggle 13-axis set + hard numerics | OPEN |
-| D-002 | How to profile an item | Supervised regressor, LLM as fallback | OPEN |
+| D-002 | How to profile an item | Supervised regressor, LLM as fallback; **Hebrew fork open** | OPEN |
 | D-003 | Dimensionality reduction | PCA first, autoencoder only if PCA disappoints | OPEN |
-| D-004 | Primary catalog source | catalog.beer, Untappd second | OPEN |
-| D-005 | Israeli / local coverage | Untappd + first-class manual entry | OPEN |
+| D-004 | Primary catalog source | catalog.beer (CC BY 4.0 ✅); Untappd dead (DE-002) | OPEN |
+| D-005 | Israeli / local coverage | label OCR + brewery pages + manual entry | OPEN |
 | D-006 | Preference model form | Bayesian linear regression on reduced axes | OPEN |
 | D-007 | Population prior | Hierarchical fit on RateBeer/BeerAdvocate per-user data | OPEN |
 | D-008 | Mood representation | Three separate mechanisms, not one | OPEN |
@@ -33,7 +33,7 @@ re-deriving it.
 | D-012 | App surface | SQLite + CLI first, Telegram bot second | OPEN |
 | D-013 | Hosting, license, privacy | Private repo, no license | OPEN |
 | D-014 | Cross-domain shared axes | 8 shared + per-domain tail | OPEN |
-| D-015 | Item identity and dedup | brewery+name normalised key | OPEN |
+| D-015 | Item identity and dedup | normalised key **+ a merge step** | OPEN |
 | D-016 | Where the LLM runs | Hosted API | OPEN |
 
 ---
@@ -77,6 +77,26 @@ decisions): temperature 0, JSON schema output, k-sample ensemble with per-axis
 median, 8–10 fixed anchor exemplars in the prompt, `profiler_version` stored on
 every row, and profile-once-never-reprofile.
 
+### Sub-decision: the local descriptions are in Hebrew (new 2026-08-30)
+
+Option B trains on the English Kaggle descriptions. The descriptions we can
+actually get for Israeli beers come from the breweries' own sites and are in
+**Hebrew** (`docs/05`). Under TF-IDF this is not "unfamiliar vocabulary" — the
+two languages share no tokens whatsoever, so the text path contributes exactly
+nothing. A new fork, with no lean yet:
+
+| Option | For | Against |
+|---|---|---|
+| **A. Translate to English first** (LLM, once per beer, cached) | Keeps the whole English-trained pipeline intact. Cheap: one call per beer, ever. Translation is the task LLMs are most reliable at, so it is the least dangerous place to put one. | An LLM enters the pipeline upstream of a number (rule 4 applies). Tasting vocabulary translates unevenly — "מרירות מדוייקת" is "precise bitterness", which is not idiomatic English beer-speak and may land off-distribution anyway. |
+| **B. Multilingual sentence encoder** instead of TF-IDF | Handles both languages natively, no translation step, no LLM. | Contradicts M0's deliberate no-model-download stance. Unknown whether a multilingual encoder's Hebrew beer vocabulary is any good — almost certainly weaker than its English. Needs its own validation. |
+| **C. Skip text for Hebrew beers; numerics only** | Zero new machinery. **May cost nothing at all** — M0 measures exactly this gap, and if text adds little over ABV/IBU/style then this option is simply correct. | Throws away the one signal we went looking for. Only defensible once M0 has quantified the loss. |
+| **D. LLM profiles the Hebrew description directly** (D-002 option A, applied narrowly) | Sidesteps translation and encoding both. LLMs read Hebrew fine. | All of option A's instability, now on the local tail specifically — the beers with the fewest labels to validate against. |
+
+**No lean yet, deliberately: M0 decides this.** If the text path barely beats
+numerics-only on English data where it has every advantage, option C wins by
+default and this whole sub-decision closes for free. Do not build A or B before
+that number exists.
+
 ---
 
 ## D-003 — Dimensionality reduction
@@ -100,9 +120,9 @@ single cheapest way to make the model work at N=10.
 
 | Option | Coverage | Fields | Cost | Notes |
 |---|---|---|---|---|
-| **catalog.beer** | ~67k beers, ~6.6k brewers | name, style, ABV, IBU, description | free key | Actively maintained (docs updated Aug 2026). Best fit for "give me a beer record". |
+| **catalog.beer** | ~67k beers, ~6.6k brewers — but **10 beers for all of Israel** | name, style, ABV, IBU, description — **description empty for 10/10 Israeli beers** | free key, 1k req/month | **CC BY 4.0, verified 2026-08-30 (NVB-78).** Permanent retention, redistribution and commercial use all permitted; attribution required. Best fit for "give me a beer record" *outside* Israel. |
 | **Untappd API** | Very large, incl. good Israeli coverage | name, style, ABV, IBU, community rating | free key, **100 calls/hour**, no tap lists | Rate limit is fine for personal use with permanent caching. |
-| **beer.db** | Community, Europe-heavy | name, style, ABV | public domain | Zero legal friction. Good for bulk seeding. |
+| ~~**beer.db**~~ | **Zero Israeli rows** | n/a | public domain | ❌ **Falsified — see `DEAD-ENDS.md` DE-001.** Abandoned upstream since 2014; no Israel data anywhere in the org. Row kept so it is not re-proposed. |
 | **Kaggle Beer Profile set** | ~3.2k | **labelled descriptor vectors** | free | *Not a catalog.* This is the profiler's training set. Do not confuse the two. |
 | **Scraping** | Whatever you point it at | whatever is on the page | ToS violation | Defensible as a one-time backfill of a few hundred local beers. Not as a running pipeline. |
 
@@ -121,7 +141,16 @@ descriptor source, so "we need Untappd for the profiles" is false.
 | **C. Scrape and document it in the README** | Honest about provenance. | The worst configuration: legal risk unchanged, **enforcement risk multiplied** — a public repo under a real name is exactly what Untappd finds searching GitHub. |
 | **D. Drop Untappd entirely** | Zero terms friction; every row citable. | Loses community scores (the `α` term) and the Israeli long tail. |
 
-**Current lean:** A, with D as a live and increasingly plausible fallback.
+**Outcome, 2026-08-30: D — and not on merit.** Untappd closed general API
+registration; keys now require contacting them directly, which Naveh declined.
+Options A, B and C all require credentials, so **D is the only one still
+standing**. See `DEAD-ENDS.md` DE-002.
+
+Recorded honestly because it matters for revisiting: the terms analysis below
+was correct and stays correct, it just stopped being the binding constraint.
+Access did. The upside is real — with Untappd gone, every remaining source has
+clean terms and this decision's hardest problem disappears. The cost is that the
+`α` community term has no data source at all.
 
 **The arithmetic that makes A sufficient:** each beer is needed **once, ever** —
 fetch, compute the profile vector, keep the vector and the facts, discard the
@@ -136,18 +165,45 @@ authoritative, offline, attached to nobody's terms. Fallback chain:
 local catalog (beer.db / catalog.beer) → label OCR → Untappd (description only) → type it
 ```
 
-**Current lean overall:** catalog.beer and beer.db as the **permanent** local
-catalog; the label as a primary source for local beers; Untappd demoted to an
-**on-demand, narrow** gap-filler for descriptions and community scores; manual
-entry as the always-available floor.
+**Current lean overall:** catalog.beer as the **permanent** catalog; the label as
+the primary source for local beers; Untappd demoted to an **on-demand, narrow**
+gap-filler for descriptions and community scores; manual entry as the
+always-available floor. beer.db is out (DE-001).
 
 ⚠️ **This lean moved because of Untappd's API terms** — they require caches to be
 purged every 24 hours and forbid using the API to build your own beer database or
 to "mine or analyze" the data. That is not a compliance footnote, it is a design
 constraint: Untappd cannot back a permanent local store. See
-`docs/13-scraping-policy.md`. **catalog.beer's own terms are unchecked** — check
-them before building on it, since if they permit retention the problem mostly
-resolves.
+`docs/13-scraping-policy.md`.
+
+### What NVB-78 changed (2026-08-30)
+
+**catalog.beer's terms are checked, and they are the best case: CC BY 4.0.**
+Permanent retention, redistribution and commercial use are all permitted against
+an attribution obligation. The blocking unknown that this decision hung on is
+gone, and it landed in our favour.
+
+**But the win is smaller than it looks, because the same spike measured the
+data.** For Israel, catalog.beer has 3 of 12 breweries, 10 beers, and an empty
+`description` on all 10. Descriptions appear only on `cb_verified` entries, of
+which Israel has none. Two effects, pulling in opposite directions:
+
+- **For the non-local catalog** — imports, travel, the M1 profile-space work —
+  catalog.beer is now unambiguously the backbone, permanently cacheable and
+  citable in public with no asterisk. That is a real and clean result.
+- **For local beer it supplies name, brewery, style and ABV: exactly what is
+  already printed on the bottle.** It adds identifiers and clean provenance, not
+  information. The label-OCR and manual-entry paths therefore carry more of this
+  project than the previous lean assumed — they are load-bearing, not a garnish.
+
+**The one that could still swing the decision:** Untappd's `beer_description` for
+Israeli beers is *still unmeasured* — it needs an API key, and the cheap way to
+check is the scrape §10.1 forbids. Its stakes went up, not down. catalog.beer is
+now known to have no local descriptions, so Untappd is the last candidate. If it
+is also empty, **no source has prose for a local beer**, D-002 option B (the
+trained regressor) cannot run on the local tail at all, and **option D — drop
+Untappd entirely — becomes the answer** almost by default. Test spec in
+`docs/13-scraping-policy.md` §12.
 
 ---
 
@@ -165,13 +221,49 @@ all have full beer lists, and there is a country-filtered top-rated page.
 | **C. Manual entry as first-class path** — label photo → OCR → LLM fills fields → you correct | Always works. Handles the shop-shelf case that no API covers. | Needs real UX effort, not a hidden admin form. |
 | **D. Give up on local, only track imports** | Simplest. | Defeats a large part of the point. |
 
-**Current lean:** A + B2 + C. The shop-shelf case is the most common real use,
-and B2/C both serve it while producing data that is unambiguously ours.
+**Current lean:** A + B2 + C, and NVB-78 **strengthened B2 + C considerably.**
+The shop-shelf case is the most common real use, and B2/C both serve it while
+producing data that is unambiguously ours.
 
-**Open and load-bearing:** is Untappd's `beer_description` even populated for
-Israeli micro-breweries? Likely thin — those entries tend to be user-created with
-just a name and style. If so, Untappd's remaining role shrinks to nearly nothing
-and D-004 option D becomes the obvious answer. Part of the NVB-78 spike.
+**Measured 2026-08-30 (NVB-78).** The two free-terms catalogs were tested against
+a 12-brewery Israeli sample:
+
+- **beer.db: zero Israeli rows, upstream dead since 2014.** Falsified — DE-001.
+- **catalog.beer: 3/12 breweries, 10 beers, 0/10 with a description.** Present:
+  Tempo (4), Malka (5), Jem's Beer Factory (1). Negev Brewery has a brewer record
+  and no beers. Absent: IBBL, Biratenu, Sheeta, Beer Bazaar, Alexander, Bazelet,
+  Herzl, Shapiro.
+
+So **no free-terms catalog covers Israeli beer**, and the one with good terms
+tells us nothing the bottle does not. Option D ("give up on local, only track
+imports") remains on the table and is now the honest alternative to investing in
+OCR — but taking it would concede most of the point of the project, and the
+label genuinely does carry ABV, style, name and brewery for free. B2 + C stay
+the lean; they are just no longer optional.
+
+**Update 2026-08-30 — option A is gone, and something better replaced it.**
+Untappd closed general API registration (DE-002), so "Untappd API only" is no
+longer available at any price. The question of whether its descriptions were any
+good is now permanently unanswerable and also moot, because the search for a
+replacement found a better source than Untappd would have been:
+
+**E. The brewery's own website.** Alexander publishes 16 beers with ~100-character
+Hebrew tasting notes; Beer Bazaar 8; Malka none. Roughly two thirds of sampled
+breweries publish usable prose, and it is *first-party* — written by the people
+who made the beer, consistent within a brewery, and descriptor-bearing in exactly
+the way the profiler wants ("malty, smooth and creamy, hinted sweetness, precise
+bitterness" is four axes in one sentence). Strictly better than the user-written
+Untappd entries we were hoping for.
+
+Its costs are real but bounded: the text is Hebrew (a new fork — see D-002's
+sub-decision), the prose is copyrightable so only the vector is kept, and there
+is no API, so collection is by hand through the manual-entry flow. ~10 breweries
+× ~10 beers is one evening, once.
+
+**Current lean:** B2 + C + E, with catalog.beer for imports. Option D (give up on
+local) is still on the table and still the honest alternative, but it is now
+clearly the worse deal: the local data turned out to be *available*, just not
+through an API.
 
 ---
 
@@ -354,6 +446,35 @@ is the obvious start and will break on Hebrew/English variants, brewery renames,
 seasonal editions, and vintage years (which matter enormously for wine and
 whisky and not at all for most beer). Needs a real think before the catalog is
 populated, because retrofitting identity is painful.
+
+**Evidence from NVB-78 (2026-08-30) — the problem is worse than "Hebrew vs
+English", and it is already present inside a single source.**
+
+- **Nothing in catalog.beer is in Hebrew script.** Every Israeli entry is
+  transliterated, so the cross-script join never arises. The damage comes from
+  *transliteration being unstable*: `Goldstar` / `Gold Star`, `Sheeta` / `Shita`,
+  `Jem's` / `JEMS`. A normaliser must fold spaces, apostrophes and case before
+  comparing, and that still will not catch everything.
+- **catalog.beer already contains duplicates of the same beer.** `Goldstar` and
+  `Gold Star Dark Lager` are two separate rows with distinct UUIDs for one
+  product — same brewery, same 4.9% ABV, same (wrong) style. So dedup is not
+  only a cross-source problem: **a single source needs deduping against itself**,
+  which rules out any design that treats "one source, one authoritative row" as
+  a simplifying assumption.
+- **Style strings are not trustworthy as identity or as features.** Both Goldstar
+  rows are classified "South German-Style Dunkel Weizen / Dunkel Weissbier".
+  Goldstar is a dark lager. If style feeds the profiler (D-001/D-002) or the
+  style-average baseline (the bar in `docs/10-evaluation.md`), source-provided
+  style needs verification, not trust.
+- **Junk rows are publicly visible**, e.g. `[Postman API Test]` entries with
+  77–91% ABV and 8,877 IBU. Identity work must sit behind a plausibility filter
+  on ABV/IBU, or test data will land in the catalog with real-looking keys.
+
+**Implication for the lean:** a pure deterministic `normalise(brewery)+
+normalise(name)` key is not sufficient on its own. It needs a merge step —
+probably a similarity pass over (brewery, ABV, style-class) proposing candidate
+duplicates for one-tap confirmation at check-in time. That is cheap to add now
+and painful later, which is exactly what this decision warned about.
 
 ---
 
