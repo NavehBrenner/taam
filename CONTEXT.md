@@ -117,9 +117,14 @@ the manual collection and the whole local-description question are even worth.
 
 ## Status
 
-**Phase 0 → M0.** One decision made (ADR-0001: public repo, MIT). The M0
-falsification harness is written and its controls pass; it needs only the Kaggle
-CSV to produce a real verdict. Everything else in this repo is still a plan.
+**Phase 0 → M0, and M2 logging is live.** One decision made (ADR-0001: public
+repo, MIT). The M0 falsification harness is written and its controls pass; it
+needs only the Kaggle CSV to produce a real verdict.
+
+**Check-ins can be logged as of 2026-08-30 (NVB-80)** —
+`python scripts/checkin.py`, storing to a gitignored `data/taam.db`. This is the
+one thing that cannot be backfilled, so it ships before the model, before the
+catalog clients, and before any UI. Everything else in this repo is still a plan.
 
 Run `python tests/test_m0_harness.py` first — it proves the harness can both
 detect a signal and refuse to endorse noise. The verdict is only worth trusting
@@ -134,6 +139,6 @@ Issues are milestone-shaped and each carries its kill criteria. The repo docs ar
 the source of truth for design; Linear is the source of truth for *what is
 being worked on*.
 
-Start with **NVB-76 (M0, profiler validation)** and **NVB-80 (start logging
-beers)**. The first can kill the project in a day; the second cannot be started
-retroactively.
+**NVB-80 (start logging beers) is done — so start logging.** The remaining
+first move is **NVB-76 (M0, profiler validation)**, which can kill the project in
+a day and is blocked only on a Kaggle download (`data/README.md`).

@@ -470,6 +470,14 @@ English", and it is already present inside a single source.**
   77–91% ABV and 8,877 IBU. Identity work must sit behind a plausibility filter
   on ABV/IBU, or test data will land in the catalog with real-looking keys.
 
+**A provisional key now exists in code (NVB-80) and this decision stays OPEN.**
+`db.identity_key()` is precisely the `normalise(maker) + normalise(name)` that
+the paragraph above predicts will break — it folds case, spaces and
+punctuation and nothing else. It is in place only so manual entry cannot
+silently create two rows for one beer, and it is recomputable from the stored
+`name`/`maker` at any time. It has not been tested against a populated catalog,
+where the self-duplication and transliteration problems above will hit it.
+
 **Implication for the lean:** a pure deterministic `normalise(brewery)+
 normalise(name)` key is not sufficient on its own. It needs a merge step —
 probably a similarity pass over (brewery, ABV, style-class) proposing candidate

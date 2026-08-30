@@ -3,6 +3,22 @@
 One-off ingest and experiment scripts. Each should be runnable standalone with
 a fixed seed and should print its numbers (N-05).
 
+Written:
+
+- `checkin.py` — **the one to run daily.** Logs a beer: item, 0–10 rating, the
+  three bootstrap questions (D-009 option B) and context tags, into
+  `data/taam.db`. Every prompt takes digits or Enter; nothing needs typing.
+
+  ```bash
+  python scripts/checkin.py                          # log one
+  python scripts/checkin.py --list                   # what's been logged
+  python scripts/checkin.py --at 2026-08-29T21:00    # backfill last night
+  ```
+
+  It is a terminal prompt on purpose (NVB-80). docs/09 wants a phone eventually,
+  but the store is the part that has to be right and the front end is
+  replaceable — and not logging while a UI gets built is unrecoverable.
+
 Planned, in roadmap order:
 
 - `m0_profiler_validation.py` — **WRITTEN, ready to run.** The falsification
