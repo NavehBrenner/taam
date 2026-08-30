@@ -7,8 +7,11 @@ matplotlib
 requests
 python-dotenv
 
-# profiler (M0) — sentence embeddings for description -> descriptor regression
-sentence-transformers
+# optional, only if the profiler moves off TF-IDF onto a sentence encoder.
+# M0 uses TF-IDF deliberately (docs/06): no model download, fully deterministic.
+# Uncommenting this pulls torch, which is most of CI's install time, so leave it
+# commented until something actually imports it.
+# sentence-transformers
 
 # optional, only if the Bayesian/hierarchical prior work (D-007 option C) starts
 # pymc

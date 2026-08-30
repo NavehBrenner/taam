@@ -23,3 +23,8 @@ venv/
 # os
 .DS_Store
 Thumbs.db
+
+# tooling
+# .qualety/ is qualety's generated ruff config
+.qualety/
+.mypy_cache/

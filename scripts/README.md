@@ -1,7 +1,7 @@
 # Scripts
 
-One-off ingest and experiment scripts. Each should be runnable standalone with a
-fixed seed and should print its numbers (N-05).
+One-off ingest and experiment scripts. Each should be runnable standalone with
+a fixed seed and should print its numbers (N-05).
 
 Planned, in roadmap order:
 

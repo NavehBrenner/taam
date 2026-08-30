@@ -71,6 +71,7 @@ suggest next.
 | Understand the ML | `docs/07-preference-model.md` |
 | Know why we didn't just use Untappd | `docs/12-prior-art.md` |
 | Add a data source (read first) | `docs/13-scraping-policy.md` |
+| Actually change something | `docs/14-workflow.md` |
 
 ## Known live problem
 

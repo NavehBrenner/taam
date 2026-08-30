@@ -1,0 +1,7 @@
+{
+  "plugins": ["@qualety/python"],
+  "rules": {
+    "python/no-unnecessary-def": "off"
+  },
+  "exclude": ["**/.venv/**"]
+}

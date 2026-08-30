@@ -35,6 +35,29 @@ has explicitly asked that alternatives be preserved. Concretely:
 6. **Nothing domain-specific goes in `preference/` or `recommend/`.** If a change
    there mentions beer, the abstraction is leaking. See `docs/11-multi-domain.md`.
 
+## Workflow — non-negotiable
+
+Full detail in `docs/14-workflow.md`. The short version:
+
+1. **No work without a Linear issue.** If one is not filed, file it (project
+   `taam · טעם`, team `NVB`) before writing code.
+2. **Branch off the issue** using Linear's own `gitBranchName`, so the issue,
+   branch and PR link themselves.
+3. **Open a PR. Never merge it.** `main` is protected and Naveh is the only
+   merger. Do not push to `main`.
+4. Use `git switch`, not `git checkout`.
+5. **The plugin reflex.** When Naveh asks for a code change, ask whether the
+   rule behind it can be enforced by a qualety rule instead of remembered by
+   the next session. Instructions here are advisory; CI is not.
+6. **Anything about qualety is filed upstream**, with
+   `gh issue create -R NavehBrenner/qualety` — a new rule, a false positive, a
+   bug. Never a Linear issue in this project: that board is for taam's work,
+   and a Linear issue is invisible to whoever fixes qualety.
+7. If qualety flags correct code, file the false positive upstream and disable
+   the rule with a pointer to that issue. Do not contort the code to please it.
+8. The three checks are `qualety check`, `pytest`, `mypy`. Run them before
+   opening a PR — CI runs exactly the same three.
+
 ## Style
 
 - Small, readable, well-named Python. Notebooks for exploration, modules for
