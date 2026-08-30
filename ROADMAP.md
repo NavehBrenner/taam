@@ -60,8 +60,13 @@ D-003/D-006 need rethinking (probably toward a stronger prior, D-007 option C).
 ## M2 — Catalog and logging (the boring, essential part)
 
 1. Schema per `docs/04-data-model.md`. SQLite.
-2. catalog.beer client + Untappd client, both cached permanently to local disk.
-3. Manual-entry path (D-005 option C) — this is not optional garnish.
+2. catalog.beer client, cached permanently to local disk (CC BY 4.0 permits it —
+   verified in NVB-78). Untappd client **on demand only**, holding nothing past
+   its 24h cache window; its terms forbid a permanent store.
+3. Manual-entry path (D-005 option C) — this is not optional garnish, and
+   NVB-78 promoted it further: catalog.beer carries 10 Israeli beers with no
+   descriptions, and beer.db carries none at all (DE-001). For local beer the
+   label *is* the catalog.
 4. Check-in flow: rating + questions + **context/mood tags**.
 5. **Start logging beers immediately, before any model exists.**
 

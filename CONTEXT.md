@@ -77,11 +77,24 @@ suggest next.
 
 **Untappd's API terms conflict with the architecture.** They require caches to be
 purged every 24 hours, forbid using the API to build your own beer database, and
-forbid "mining or analyzing" the data — which describes this project. The catalog
-backbone therefore has to be catalog.beer + beer.db + manual entry, with Untappd
-demoted to on-demand enrichment. **catalog.beer's own terms are unchecked and
-should be read before anything is built on it.** Details in
+forbid "mining or analyzing" the data — which describes this project. Untappd is
+therefore demoted to on-demand enrichment, never a store. Details in
 `docs/13-scraping-policy.md`.
+
+**catalog.beer's terms are now checked (NVB-78, 2026-08-30): CC BY 4.0** —
+permanent retention, redistribution and commercial use permitted, attribution
+required. It is the permanent backbone. But the same spike measured its data and
+found the local shelf nearly bare: **3 of 12 Israeli breweries, 10 beers, and an
+empty description on all 10.** beer.db is dead (DE-001: zero Israeli rows,
+abandoned since 2014).
+
+So the terms problem is solved and a coverage problem replaced it. For Israeli
+beer, no catalog supplies anything the bottle label does not — which makes the
+label-OCR and manual-entry paths load-bearing rather than a convenience.
+
+**The open question that could still collapse Untappd's role entirely:** is its
+`beer_description` populated for Israeli micro-brews? It needs an API key to
+answer, and it is the last candidate source of prose for a local beer.
 
 ## Status
 

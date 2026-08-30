@@ -32,14 +32,51 @@ See `docs/13-scraping-policy.md` §7 for why that makes 100 calls/hour ample.
 ## Catalog sources
 
 ### catalog.beer
-- REST API, ~67,000 beers and ~6,600 brewers.
-- ⚠️ **Terms unchecked.** If they permit permanent retention, this becomes the
-  backbone and the Untappd retention problem mostly resolves. Check first.
-- Per-beer: name, style, ABV, IBU, description.
-- Free API key, HTTP basic auth. Docs actively maintained (updated Aug 2026).
-- **Best default for item lookup.** Descriptions are what the profiler eats.
-- Unknowns: Israeli coverage (untested), description quality distribution,
-  whether the key has an undocumented rate limit.
+
+> **Terms verified 2026-08-30 (NVB-78).** Content is **CC BY 4.0** — permanent
+> retention, redistribution and commercial use are all permitted, attribution
+> required. The licence explicitly excludes brewery names, brands and
+> trademarks, which stay with their owners. There is no cache-purge clause, no
+> no-database clause, and no anti-analysis clause. **This is the backbone.**
+
+- REST API, ~67,000 beers and ~6,600 brewers. Base `https://api.catalog.beer`,
+  HTTP basic auth with the key as username. 1,000 requests/month free, then
+  $1/1,000. Docs actively maintained (updated Aug 2026).
+- Per-beer schema: `name`, `style`, `style_id`, `class`, `beverage_type`,
+  `description`, `abv`, `ibu`, `cb_verified`, `brewer_verified`, `brewer`.
+- **Attribution:** credit Catalog.beer, link the CC BY 4.0 licence, and state
+  that changes were made. This has to appear wherever catalog-derived rows are
+  published — README and any exported dataset.
+
+**Measured, not assumed (NVB-78, 2026-08-30).** Twelve Israeli breweries were
+queried through the public search:
+
+| Result | Breweries |
+|---|---|
+| Brewer present, ≥1 beer | Tempo (4 beers), Malka (5), Jem's Beer Factory (1) |
+| Brewer record but **zero beers** | Negev Brewery |
+| Absent entirely | IBBL, Biratenu, Sheeta, Beer Bazaar, Alexander, Bazelet, Herzl, Shapiro |
+
+**10 beers for the entire Israeli scene**, and two of those ten are duplicates
+of each other. Beware fuzzy search: `Sheeta`, `Alexander` and `Beer Bazaar` all
+return non-empty result sets made **entirely of unrelated US and European
+breweries**. A naive hit-rate count that trusts "did the search return rows?"
+reports 6/12 instead of the true 3/12.
+
+**The finding that matters most: `description` is empty for 10/10 of the Israeli
+beers.** The field exists in the schema and is well populated — but only on
+entries carrying the `cb_verified` ("Verified by Catalog.beer") curation flag,
+which no Israeli entry has. Sampled verified US entries (Russian River *Tempo
+Change*, Pabst *Olympia*, Flying Fish *Jersey Juice*) all have real prose.
+
+So for local beers catalog.beer supplies name, brewery, style and ABV —
+**exactly the fields already printed on the bottle**, and nothing the profiler
+can eat. Its value here is clean terms and clean identifiers, not information.
+
+- Data quality is uneven and must be filtered on ingest: public search returns
+  `[Postman API Test]` rows with 77–91% ABV and 8,877 IBU. Any bulk import needs
+  a plausibility filter on ABV/IBU before rows reach the catalog.
+- IBU is absent on every Israeli entry sampled.
 
 ### Untappd API
 
@@ -57,10 +94,12 @@ See `docs/13-scraping-policy.md` §7 for why that makes 100 calls/hour ample.
 - 100/hr is fine at personal scale (a handful of new beers a week) *provided
   every response is cached permanently*. Design for it, don't fight it.
 
-### beer.db
-- Public domain, plain-text CSV, community maintained, Europe-heavy.
-- Breweries and beers with ABV and style; thinner on descriptions.
-- Zero legal friction; good for bulk seeding a local cache.
+### beer.db — dead, see `DEAD-ENDS.md` DE-001
+- Public domain, plain-text fixtures, community maintained, Europe-heavy.
+- **Abandoned upstream and useless here.** The `openbeer/world` repo has no
+  Israel directory and zero Israel matches anywhere in its tree; its last commit
+  is from 2014. Of the 27 org repos, most were last pushed 2014–2018.
+- Retained in this list only so it is not re-proposed. Do not build an adapter.
 
 ### The bottle label itself
 - **A primary source, and the best one for local beers.** ABV is legally
@@ -128,8 +167,25 @@ See `docs/13-scraping-policy.md` §7 for why that makes 100 calls/hour ample.
 
 ## Open questions
 
-- Does catalog.beer actually cover Israeli beers? **Untested. Test early** — it
-  determines whether the manual path is a convenience or the main event.
-- Hebrew/English name variants will break dedup (D-015). How badly?
+**Answered by NVB-78 (2026-08-30):**
+
+- ~~Does catalog.beer actually cover Israeli beers?~~ Barely: 3 of 12 breweries,
+  10 beers, no descriptions. **The manual/label path is the main event, not a
+  convenience.**
+- ~~Should the local cache be seeded in bulk (beer.db) or lazily on lookup?~~
+  Neither source can bulk-seed anything Israeli. Lazily, on lookup.
+- ~~Hebrew/English name variants will break dedup (D-015). How badly?~~ Worse
+  than the Hebrew/English axis suggests — see D-015. Nothing in catalog.beer is
+  in Hebrew script at all; the damage comes from unstable *transliteration* and
+  from duplicate rows within a single source.
+
+**Still open:**
+
+- **Is Untappd's `beer_description` populated for Israeli micro-brews?** Still
+  unanswered — it needs an API key, and answering it by scraping is precisely
+  what `docs/13-scraping-policy.md` §10.1 forbids. Now the single highest-value
+  unknown left in the source strategy: catalog.beer has been shown to supply no
+  descriptions locally, so if Untappd has none either, **no source does**, the
+  regressor has no text to eat for local beers, and D-002 option B cannot run on
+  them at all. See D-004 and the register in `docs/13-scraping-policy.md` §11.
 - Is there any legitimate source for local availability? Currently: no.
-- Should the local cache be seeded in bulk (beer.db) or lazily on lookup?

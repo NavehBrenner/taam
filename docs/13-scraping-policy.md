@@ -178,20 +178,65 @@ between a portfolio project and a liability.
 |---|---|---|---|---|
 | Kaggle Beer Profile set | yes | per dataset licence | cite | ☐ |
 | BeerAdvocate / RateBeer (UCSD) | yes, research use | no | cite papers | ☐ |
-| beer.db | yes — public domain | yes | courtesy | ☐ |
-| catalog.beer | **UNKNOWN — blocking** | ? | ? | ☐ |
+| beer.db | yes — public domain | yes | courtesy | ✅ *(but empty — DE-001)* |
+| catalog.beer | **yes — CC BY 4.0** | **yes, incl. commercial** | **required** | ✅ |
 | Untappd API | **no — 24h purge** | no | required | ✅ |
 | Scotch whisky 86×12 set | yes | per source | cite | ☐ |
 | Label OCR / manual entry | ours | ours | n/a | ✅ |
 
+### catalog.beer — verified 2026-08-30 (NVB-78)
+
+The blocking unknown is resolved, and it resolved in our favour.
+<https://catalog.beer/terms> and <https://catalog.beer/api-usage> both state:
+
+> "The content displayed on this website is licensed under a Creative Commons
+> Attribution 4.0 International license (CC BY 4.0)." … "This license does not
+> apply to any brewery's name, brand(s), or trademarks, which remain the
+> property of their respective owners."
+
+CC BY 4.0 grants *Share* ("copy and redistribute the material in any medium or
+format") and *Adapt* ("remix, transform, and build upon the material for any
+purpose, **even commercially**"), against a single obligation: give appropriate
+credit, link the licence, and indicate if changes were made.
+
+There is **no cache-purge clause, no "don't build your own database" clause, and
+no anti-mining clause** — the three that make Untappd unusable as a store. Every
+concern in §2 evaporates for this source.
+
+**Required of us:** a CC BY 4.0 attribution for Catalog.beer wherever
+catalog-derived rows appear (README, and any exported dataset), noting that
+changes were made — the profiler transforms every row it touches.
+
+**But the licence being permissive does not make the data useful.** See
+`docs/05-data-sources.md`: 3 of 12 Israeli breweries present, 10 beers total,
+and `description` empty on 10/10 of them. Clean terms over a nearly empty
+shelf. catalog.beer is the backbone we are *allowed* to build — it is just a
+much thinner backbone than the terms alone would suggest.
+
 ## 12. Open questions
 
-- **catalog.beer's terms.** The hinge. If retention is permitted it becomes the
-  backbone and most of this dissolves.
+- ~~**catalog.beer's terms.** The hinge.~~ **Settled 2026-08-30: CC BY 4.0.**
+  Retention, redistribution and commercial use are all permitted. It becomes the
+  permanent backbone; §2's problems apply to Untappd only. See §11 above.
 - **Is Untappd's `beer_description` even populated for Israeli micro-breweries?**
-  Likely thin-to-empty — those entries tend to be user-created with just a name
-  and style. If so, Untappd's remaining slot shrinks to nearly nothing and the
-  label plus manual entry is the whole local story. Part of the NVB-78 spike.
+  Still open, and now the most valuable unknown in the whole source strategy.
+  NVB-78 raised its stakes rather than settling it: catalog.beer was *measured*
+  to have no descriptions for Israeli beers, so Untappd is the last candidate
+  source of prose for them. If it is empty too, **no source has a description
+  for a local beer** — D-002 option B (the trained regressor) simply cannot run
+  on the local tail, and the profiler must fall back to the LLM or to manual
+  entry for every Israeli beer.
+
+  **Why it is still unanswered:** it needs a registered API key, and the cheap
+  way to answer it — reading Untappd beer pages directly — is exactly what §10.1
+  forbids. It cannot be shortcut without violating this document.
+
+  **The test, when a key exists:** `GET /v4/beer/info/{bid}` for ~20 Israeli
+  beers across Tempo, IBBL, Biratenu, Sheeta, Beer Bazaar and Alexander; record
+  `beer_description` length per beer. Verdict: median length under ~100
+  characters, or more than half empty, means Untappd adds nothing the label does
+  not, and **D-004 option D (drop Untappd entirely) becomes the answer** — which
+  would also delete this entire document's problem.
 - **Does the `α` community term earn its place at all?** If the personal model is
   decent without community scores, dropping the term removes this entire problem
   class in one line. M4 answers this anyway — measure before designing around it.
