@@ -13,8 +13,10 @@ team `NVB`.
 2. **Branch off the issue.** Linear generates the branch name (`gitBranchName`
    on the issue, e.g. `navegerc/nvb-92-…`); use it verbatim so Linear links the
    branch, the PR, and the issue by itself.
-3. **Open a PR.** Every PR body links its issue.
-4. **Naveh merges.** Nobody and nothing else does — not an agent, not a bot.
+3. **Walk it through, then stop.** See below. The PR does not get opened until
+   Naveh has read the finding and responded.
+4. **Open a PR.** Every PR body links its issue.
+5. **Naveh merges.** Nobody and nothing else does — not an agent, not a bot.
 
 `main` is protected: no direct pushes, PR required. If a push to `main` is
 rejected, that is the rule working, not a misconfiguration.
@@ -22,6 +24,34 @@ rejected, that is the rule working, not a misconfiguration.
 Use `git switch` (and `git switch -c`), not `git checkout`. `checkout` overloads
 branch-switching with file-restoring, and the failure mode of the second is
 losing uncommitted work.
+
+## The walk-through
+
+**Required before every PR.** `.claude/skills/issue-walkthrough/SKILL.md`; the
+output lands in `docs/walkthroughs/NVB-<n>.md` and is committed with the work.
+
+```
+work done → qualety check / pytest / mypy pass → walk-through → Naveh responds → PR
+```
+
+This project is research, and a PR diff is an honest record of what changed and
+a useless record of what we learned. The walk-through carries the second: what
+the issue actually asked, what we found *with its baseline and its uncertainty*,
+what moved in `DECISIONS.md`, what we tried that failed — including bugs found in
+our own instruments, which matter more than bugs in the product because they
+corrupt every number they touched.
+
+Two rules make it work rather than become a formality:
+
+- **It comes before the PR, not with it.** A readout that arrives alongside a PR
+  is a summary. One that arrives before it is a decision point, and redirecting
+  is free at that moment and expensive after review starts.
+- **It names its own weakest claim.** Every walk-through ends by pointing at the
+  thing most likely to be wrong. A walk-through with nothing to push back on is
+  not finished being written.
+
+Plumbing issues get a four-line walk-through saying nothing was found. That is
+the correct output; padding one teaches Naveh to skim them.
 
 ## Checks
 
