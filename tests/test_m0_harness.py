@@ -15,7 +15,12 @@ The negative control matters more. A harness that never says "stop" is not a
 falsification experiment, it is a rubber stamp — and the first version of this
 one had exactly that bug: on pure noise, ridge beat the style-average baseline
 on 4 of 11 axes by chance, because both were near zero. That is why the verdict
-now requires an absolute r bar and not merely a win over the baseline.
+requires an absolute r bar and not merely a win over the baseline.
+
+A second version of the same bug: on the real data a SINGLE split moved the
+verdict by three axes, because a 0.05 margin on one 200-beer holdout is inside
+the noise. The verdict now averages over splits and requires the lift to be
+positive on every one of them.
 """
 
 from __future__ import annotations
@@ -25,7 +30,6 @@ import pathlib
 import sys
 
 import numpy as np
-from sklearn.model_selection import train_test_split
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -38,12 +42,18 @@ def _load_m0():
     return mod
 
 
+SPLITS = 5  # ponytail: 5 not 20, so the controls stay fast; the sign test is
+            # already p ~ 3e-2 per axis at 5 splits and both controls are
+            # comfortably clear of it. Raise if either ever flakes.
+
+
 def _run(df, m0):
-    tr, te = train_test_split(df, test_size=200, random_state=0)
-    truth = te[m0.CANDIDATE_AXES].to_numpy()
-    scores = {name: m0.per_axis_r(truth, np.asarray(fn(tr, te), dtype=float))
-              for name, fn in m0.METHODS.items()}
+    scores = m0.run_splits(df, holdout=200, seeds=range(SPLITS))
     return scores, m0.report(scores)
+
+
+def _mean(scores, method, axis):
+    return float(np.nanmean(scores[method][axis]))
 
 
 def test_positive_control():
@@ -52,7 +62,8 @@ def test_positive_control():
     scores, rc = _run(m0.make_synthetic(seed=1), m0)
     assert rc == 0, "kill criterion fired on data with a known signal"
     for axis in m0.HEADLINE_AXES:
-        assert scores["text+numerics"][axis] > scores["style-average"][axis], axis
+        assert (_mean(scores, "text+numerics", axis)
+                > _mean(scores, "style-average", axis)), axis
 
 
 def test_negative_control():

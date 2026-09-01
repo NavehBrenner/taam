@@ -110,6 +110,73 @@ viable and we fall back to one source (probably B, for coverage).
 That third row is the one to actually watch for. It is the cheapest possible way
 to find out the project doesn't work, and finding that out in a day is a win.
 
+### What M0 actually returned (2026-09-01, NVB-76)
+
+Data: the Kaggle set, 3,197 beers. Method: 20 random 400-beer holdouts, per-axis
+Pearson r, mean ± sd. Reproduce with
+
+```bash
+python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv
+```
+
+| axis | style-average | numerics-only | text+numerics | lift over baseline | reliable? |
+|---|---|---|---|---|---|
+| Astringency | 0.661 ± 0.030 | 0.662 ± 0.030 | **0.681 ± 0.027** | +0.020 | 20/20 ✅ |
+| Body | 0.787 ± 0.022 | 0.786 ± 0.023 | **0.797 ± 0.022** | +0.010 | 17/20 |
+| Alcohol | 0.695 ± 0.031 | 0.748 ± 0.069 | **0.787 ± 0.060** | +0.092 | 18/20 |
+| Bitter | 0.765 ± 0.021 | 0.766 ± 0.022 | **0.807 ± 0.020** | +0.042 | 20/20 ✅ |
+| Sweet | 0.681 ± 0.031 | 0.687 ± 0.055 | **0.703 ± 0.058** | +0.022 | 17/20 |
+| Sour | 0.835 ± 0.020 | 0.834 ± 0.020 | **0.849 ± 0.017** | +0.014 | 18/20 |
+| Salty | **0.532 ± 0.204** | 0.531 ± 0.200 | 0.504 ± 0.160 | −0.001 | 11/20 |
+| Fruits | 0.790 ± 0.022 | 0.789 ± 0.027 | **0.803 ± 0.028** | +0.013 | 17/20 |
+| Hoppy | 0.756 ± 0.022 | 0.757 ± 0.022 | **0.787 ± 0.018** | +0.031 | 20/20 ✅ |
+| Spices | 0.747 ± 0.045 | 0.750 ± 0.044 | **0.788 ± 0.034** | +0.041 | 20/20 ✅ |
+| Malty | 0.773 ± 0.018 | 0.772 ± 0.019 | **0.787 ± 0.020** | +0.014 | 17/20 |
+
+"Reliable" = the lift over style-average was positive on every one of the 20
+splits. On pure noise that is p ≈ 2·10⁻⁶ per axis, so it is a real bar, and the
+negative control in `tests/test_m0_harness.py` still fires the kill criterion.
+
+**The kill criterion did not fire.** Four axes beat style-average reliably, and
+all three headline axes clear r = 0.7. The project's premise survives.
+
+**But read the size of the lift, not just its sign.** The largest reliable lift
+is **+0.042** (Bitter). Not one axis reaches the +0.05 materiality bar. The
+honest summary:
+
+> Style-average, which reads no text at all, is worth r ≈ 0.53–0.84 on its own.
+> Everything the description and the numerics add on top of it is about +0.03.
+
+Three things follow, none of which close a decision:
+
+1. **Style is not a poor proxy for flavour — it is a very good one**, at least on
+   US-craft data with clean style labels. The warning in "Clustering" below still
+   stands for the *readout*, but as a *predictor* the style label is strong.
+2. **Numerics alone add essentially nothing over style** (ABV/IBU are largely
+   determined by style; only Alcohol, unsurprisingly, moves). The lift is coming
+   from the description text, which is the good news for the premise and the bad
+   news for D-002's Hebrew fork.
+3. **`Salty` is the unstable one**, but not in the way D-001 predicted. Its mean
+   r of 0.532 clears the 0.40 bar, so it is not dropped — yet its sd of **0.204**
+   is 7× any other axis. It is near-constant in the data (D-001 option A already
+   flagged this), so a handful of outliers dominate the correlation and the
+   number swings wildly by split. Treat r = 0.53 on Salty as not measured rather
+   than as measured-and-fine.
+
+#### The single-split trap, and what it cost
+
+The first run of this experiment used one 200-beer holdout, as originally
+specified above. It reported *"WORKS on 3/11 axes: Alcohol, Sweet, Spices"*.
+That verdict is **wrong**: over 20 splits, Alcohol and Sweet are not reliable at
+all, and it missed Bitter, Hoppy and Astringency entirely. Three of the four
+names changed.
+
+A 0.05 margin on one 400-beer holdout sits inside the split-to-split noise
+(sd ≈ 0.02–0.06 per axis). The harness now averages over 20 splits and requires
+the lift to be positive on every one; `--seeds 1` reproduces the old behaviour if
+you ever want to see it fail. This is the second time a control caught a bug in
+this harness's verdict logic — see the header of `tests/test_m0_harness.py`.
+
 ## Dimensionality reduction (D-003)
 
 The axes are heavily collinear — hoppy↔bitter, malty↔sweet↔body. Compressing

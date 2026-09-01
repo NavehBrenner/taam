@@ -14,7 +14,7 @@ Method
 ------
 Hold out beers from the Kaggle "Beer Profile and Ratings" set (which ships
 labelled descriptor columns), predict their descriptors three ways, and score
-each against the labels with per-axis Pearson r:
+each against the labels with per-axis Pearson r, averaged over 20 splits:
 
   1. style-average  — the mean descriptor vector of that beer's style.
                       THE BASELINE THAT MATTERS. Uses no text at all.
@@ -29,6 +29,7 @@ Interpretation
 --------------
   r > 0.7 on bitter / sweet / body            good, proceed
   an axis < 0.4                               drop it from the vocabulary (D-001)
+  lift not positive on every split            not reliable; style already told us
   nothing beats style-average                 KILL CRITERION — the "profile" is a
                                               laundered style label; re-open
                                               D-001 / D-002
@@ -50,6 +51,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
@@ -203,57 +205,97 @@ def per_axis_r(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
     return out
 
 
-def report(scores: dict[str, dict[str, float]]) -> int:
+def run_splits(df: pd.DataFrame, holdout: int,
+               seeds: Iterable[int]) -> dict[str, dict[str, list[float]]]:
+    """Score every method on every split. One split is not a measurement."""
+    scores: dict[str, dict[str, list[float]]] = {n: {} for n in METHODS}
+    for seed in seeds:
+        tr, te = train_test_split(df, test_size=holdout, random_state=seed)
+        truth = te[CANDIDATE_AXES].to_numpy()
+        for name, fn in METHODS.items():
+            for axis, r in per_axis_r(truth, np.asarray(fn(tr, te), float)).items():
+                scores[name].setdefault(axis, []).append(r)
+    return scores
+
+
+def _series(scores: dict[str, dict[str, list[float]]], method: str,
+            axis: str) -> np.ndarray:
+    return np.asarray(scores[method][axis], dtype=float)
+
+
+def _best_model(scores: dict[str, dict[str, list[float]]], axis: str) -> str:
+    """Whichever model method has the higher mean r on this axis.
+
+    Picked once per axis rather than per split: taking the per-split maximum
+    would let noise choose the winner and bias every lift upwards.
+    """
+    return max(("numerics-only", "text+numerics"),
+               key=lambda m: np.nanmean(_series(scores, m, axis)))
+
+
+def report(scores: dict[str, dict[str, list[float]]]) -> int:
     width = max(len(a) for a in CANDIDATE_AXES) + 2
     names = list(METHODS)
+    n_splits = len(next(iter(scores["style-average"].values())))
 
-    print("\nPer-axis Pearson r against held-out labels")
-    print("-" * (width + 16 * len(names)))
-    print("axis".ljust(width) + "".join(n.rjust(16) for n in names))
-    print("-" * (width + 16 * len(names)))
+    print(f"\nPer-axis Pearson r against held-out labels "
+          f"(mean +/- sd over {n_splits} splits)")
+    print("-" * (width + 18 * len(names)))
+    print("axis".ljust(width) + "".join(n.rjust(18) for n in names))
+    print("-" * (width + 18 * len(names)))
     for axis in CANDIDATE_AXES:
         row = axis.ljust(width)
-        best = max((scores[n][axis] for n in names if not np.isnan(scores[n][axis])),
-                   default=float("nan"))
         for n in names:
-            v = scores[n][axis]
-            cell = "   n/a" if np.isnan(v) else f"{v:6.3f}"
-            if not np.isnan(v) and abs(v - best) < 1e-9:
-                cell += " *"
-            row += cell.rjust(16)
+            v = _series(scores, n, axis)
+            cell = ("     n/a" if np.all(np.isnan(v))
+                    else f"{np.nanmean(v):6.3f}+-{np.nanstd(v):.3f}")
+            row += cell.rjust(18)
         print(row)
-    print("-" * (width + 16 * len(names)))
-    print("* = best method for that axis\n")
-
-    base = scores["style-average"]
-    best_model = {a: max(scores["numerics-only"][a], scores["text+numerics"][a])
-                  for a in CANDIDATE_AXES}
+    print("-" * (width + 18 * len(names)))
 
     # An axis "works" only if it is BOTH usefully predictive in absolute terms
-    # AND better than the no-text baseline. Relative improvement alone is not
-    # enough: on pure noise, ridge beats style-average on some axes by chance,
-    # and both are near zero. USEFUL_R is the absolute bar.
+    # AND beats the no-text baseline reliably. Relative improvement on ONE split
+    # is not enough: on pure noise ridge beats style-average on some axes by
+    # chance, and even on real data a single split moved the verdict by three
+    # axes. The reliability bar is a sign test -- the lift must be positive on
+    # EVERY split. On noise that is p ~ 2e-6 per axis, so the kill criterion
+    # still fires; MARGIN is now a materiality label, not a pass/fail gate.
     USEFUL_R = 0.40
     MARGIN = 0.05
 
-    def ok(a):
-        return (not np.isnan(best_model[a])
-                and best_model[a] >= USEFUL_R
-                and best_model[a] > base[a] + MARGIN)
+    print("\nLift of the better model over style-average, per split")
+    print("-" * 62)
+    lifts, wins, chosen = {}, {}, {}
+    for axis in CANDIDATE_AXES:
+        m = _best_model(scores, axis)
+        d = _series(scores, m, axis) - _series(scores, "style-average", axis)
+        chosen[axis], lifts[axis] = m, d
+        wins[axis] = int(np.sum(d > 0))
+        lo, hi = (float("nan"), float("nan")) if np.all(np.isnan(d)) else (
+            float(np.nanmin(d)), float(np.nanmax(d)))
+        print(f"{axis.ljust(width)}{np.nanmean(d):+7.3f}  "
+              f"[{lo:+.3f},{hi:+.3f}]  positive on {wins[axis]}/{n_splits}"
+              f"  ({m})")
+    print("-" * 62)
 
-    working = [a for a in CANDIDATE_AXES if ok(a)]
+    def mean_r(axis: str) -> float:
+        return float(np.nanmean(_series(scores, chosen[axis], axis)))
+
+    def reliable(axis: str) -> bool:
+        return wins[axis] == n_splits and not np.isnan(mean_r(axis))
+
+    working = [a for a in CANDIDATE_AXES if reliable(a) and mean_r(a) >= USEFUL_R]
+    material = [a for a in working if float(np.nanmean(lifts[a])) >= MARGIN]
     weak = [a for a in CANDIDATE_AXES
-            if not np.isnan(best_model[a]) and best_model[a] < USEFUL_R]
+            if not np.isnan(mean_r(a)) and mean_r(a) < USEFUL_R]
     no_lift = [a for a in CANDIDATE_AXES
-               if not np.isnan(best_model[a])
-               and best_model[a] >= USEFUL_R
-               and best_model[a] <= base[a] + MARGIN]
-    headline_ok = [a for a in HEADLINE_AXES if best_model.get(a, 0) > 0.7]
+               if a not in working and a not in weak and not np.isnan(mean_r(a))]
+    headline_ok = [a for a in HEADLINE_AXES if mean_r(a) > 0.7]
 
-    print("VERDICT")
+    print("\nVERDICT")
     print("=" * 62)
-    print(f"criterion: an axis works if r >= {USEFUL_R} AND beats "
-          f"style-average by > {MARGIN}\n")
+    print(f"criterion: an axis works if mean r >= {USEFUL_R} AND its lift over")
+    print(f"style-average is positive on all {n_splits} splits\n")
 
     if not working:
         print("*** KILL CRITERION HIT ***\n")
@@ -262,7 +304,7 @@ def report(scores: dict[str, dict[str, float]]) -> int:
             print(f"(every axis below r={USEFUL_R}). Either the descriptions carry")
             print("no signal, or the labels do not mean what we assumed.")
         else:
-            print("No axis beats the style-average baseline by a useful margin.")
+            print("No axis beats the style-average baseline reliably.")
             print("The 'profile' is a laundered style label: everything it knows,")
             print("the style already told us.")
         print("\nThe content-based premise is in trouble. Re-open D-001/D-002,")
@@ -270,8 +312,13 @@ def report(scores: dict[str, dict[str, float]]) -> int:
         print("Log this in DEAD-ENDS.md WITH THIS TABLE.")
         return 1
 
-    print(f"WORKS on {len(working)}/{len(CANDIDATE_AXES)} axes:")
+    print(f"RELIABLE LIFT on {len(working)}/{len(CANDIDATE_AXES)} axes:")
     print("  " + ", ".join(working))
+    print(f"\n  ...of which the lift is also material (>= {MARGIN}): "
+          f"{', '.join(material) if material else 'NONE'}")
+    if not material:
+        print("  -> the text signal is real but small. Style-average is doing")
+        print("     most of the work; do not oversell the profiler.")
     print(f"\nHeadline axes over r=0.7: "
           f"{', '.join(headline_ok) if headline_ok else 'NONE'} "
           f"(of {', '.join(HEADLINE_AXES)})")
@@ -279,7 +326,7 @@ def report(scores: dict[str, dict[str, float]]) -> int:
         print("  -> weaker than hoped. Proceed, but expect a low ceiling in M4.")
     if no_lift:
         print("\nPredictable, but style already told us "
-              "(no lift over baseline):\n  " + ", ".join(no_lift))
+              "(no reliable lift over baseline):\n  " + ", ".join(no_lift))
     if weak:
         print(f"\nBelow r={USEFUL_R} — DROP these from the vocabulary (D-001):")
         print("  " + ", ".join(weak))
@@ -296,8 +343,10 @@ def main() -> int:
     ap.add_argument("--data", help="path to beer_profile_and_ratings.csv")
     ap.add_argument("--self-test", action="store_true",
                     help="run on synthetic data with known structure")
-    ap.add_argument("--holdout", type=int, default=200)
-    ap.add_argument("--seed", type=int, default=SEED)
+    ap.add_argument("--holdout", type=int, default=400)
+    ap.add_argument("--seed", type=int, default=SEED, help="first split seed")
+    ap.add_argument("--seeds", type=int, default=20,
+                    help="number of train/holdout splits to average over")
     args = ap.parse_args()
 
     if args.self_test:
@@ -310,17 +359,15 @@ def main() -> int:
     else:
         ap.error("pass --data <csv> or --self-test")
 
-    tr, te = train_test_split(df, test_size=args.holdout, random_state=args.seed)
-    print(f"train={len(tr)}  holdout={len(te)}  seed={args.seed}")
-
-    truth = te[CANDIDATE_AXES].to_numpy()
-    scores = {}
-    for name, fn in METHODS.items():
-        scores[name] = per_axis_r(truth, np.asarray(fn(tr, te), dtype=float))
+    seeds = range(args.seed, args.seed + args.seeds)
+    print(f"holdout={args.holdout}  splits={args.seeds}  seeds={seeds.start}..{seeds.stop - 1}")
+    scores = run_splits(df, args.holdout, seeds)
 
     rc = report(scores)
     if args.self_test:
-        ok = scores["text+numerics"]["Bitter"] > scores["style-average"]["Bitter"]
+        bit = np.asarray(scores["text+numerics"]["Bitter"]) - np.asarray(
+            scores["style-average"]["Bitter"])
+        ok = bool(np.all(bit > 0))
         print(f"\nself-test {'PASSED' if ok else 'FAILED'} — harness "
               f"{'detects' if ok else 'CANNOT DETECT'} a known text signal.")
         return 0 if ok else 2

@@ -14,9 +14,18 @@ one is a success: it means we learned something cheaply. Record it in
 **Do this first.** It is the highest-risk component and it can be settled in a day.
 Everything downstream is worthless if item profiles are garbage.
 
-> **Status: harness written and verified** —
+> **Status: RUN. The kill criterion did not fire (2026-09-01, NVB-76).**
+> Table and full reading in `docs/06-profiler.md`; leans moved in D-001 and
+> D-002. Headline: all three headline axes clear r = 0.7, four axes beat the
+> style-average baseline on all 20 splits — **but the largest lift is +0.042 and
+> none is material.** Style-average alone is worth r = 0.53–0.84. The premise
+> survives; the profiler is not the star of the show.
+>
+> Also fixed here: the verdict was being read off a *single* holdout, which named
+> three axes wrong. It now averages 20 splits and requires the lift to be
+> positive on every one.
+>
 > `scripts/m0_profiler_validation.py`, controls in `tests/test_m0_harness.py`.
-> Needs only `data/raw/beer_profile_and_ratings.csv` (see `data/README.md`).
 > It runs a style-average baseline, a numerics-only ridge, and a
 > TF-IDF-text + numerics ridge, then prints per-axis Pearson r and a verdict.
 >
@@ -48,6 +57,11 @@ into the vector at all. Drop anything under r ≈ 0.4.
 1. PCA the labelled profile vectors. How many components for 80% variance?
 2. Try to name the components. Look at the extremes of each.
 3. k-means in profile space; check which styles dominate each cluster.
+4. **New, from M0:** score *within-style* discrimination, not just descriptor
+   reconstruction. M0 showed style-average is nearly as good as the text model at
+   reproducing labels — but it cannot tell two IPAs apart at all, by
+   construction. Whether the profiler's +0.03 lives exactly there is the question
+   M0 could not answer and is the one that decides D-002 option E.
 
 **Success:** ≤5 components explain ≥80%, and at least PC1 and PC2 are nameable.
 This directly sets the parameter count for M3.

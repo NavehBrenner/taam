@@ -19,8 +19,8 @@ re-deriving it.
 
 | ID | Decision | Current lean | Status |
 |---|---|---|---|
-| D-001 | Beer descriptor vocabulary | Kaggle 13-axis set + hard numerics | OPEN |
-| D-002 | How to profile an item | Supervised regressor, LLM as fallback; **Hebrew fork open** | OPEN |
+| D-001 | Beer descriptor vocabulary | Kaggle 13-axis set + hard numerics; `salty` now unmeasured, not fine | OPEN |
+| D-002 | How to profile an item | Supervised regressor, LLM as fallback; **Hebrew fork: M0 says C is cheap** | OPEN |
 | D-003 | Dimensionality reduction | PCA first, autoencoder only if PCA disappoints | OPEN |
 | D-004 | Primary catalog source | catalog.beer (CC BY 4.0 ✅); Untappd dead (DE-002) | OPEN |
 | D-005 | Israeli / local coverage | label OCR + brewery pages + manual entry | OPEN |
@@ -56,6 +56,28 @@ immediately. Drop any axis that fails validation (see `docs/10-evaluation.md`).
 in practice, or are they collinear? Should sourness be one axis or two
 (lactic vs. acetic)?
 
+**What M0 measured (2026-09-01, NVB-76).** No axis fell below the r = 0.40 drop
+bar, so **nothing is dropped from the vocabulary** and option A's 11 measurable
+axes all survive. Full table in `docs/06-profiler.md`.
+
+The `salty` sub-question is *not* settled by that, and the result is more
+interesting than a pass. Its mean r of 0.532 clears the bar, but its standard
+deviation across 20 splits is **0.204** — 7× every other axis. The axis is
+near-constant in the data, so its correlation is decided by a few outliers and
+swings by split. The honest status is **unmeasured**, not fine. Two ways to
+resolve it, no lean yet:
+
+- **A. Keep it and let the model shrink it.** A near-constant axis carries almost
+  no variance, so a ridge/Bayesian fit will assign it a near-zero weight anyway.
+  Costs one dimension. Rule 5 (never drop context data) points here.
+- **B. Score it on stability, not level** — e.g. require sd < 0.05 across splits
+  as a second drop bar. This would drop `salty` today, and is the rule we would
+  have wanted if the axis had been near-constant *and* below 0.40.
+
+Note the vocabulary is 13 axes in option A but the Kaggle set only ships 11
+scoreable ones (`floral` and `mouthfeel` are absent as columns). Those two are
+untested by M0, not endorsed by it.
+
 ---
 
 ## D-002 — How to profile an item
@@ -71,6 +93,22 @@ in practice, or are they collinear? Should sourness be one axis or two
 
 **Current lean:** D. But note the scale-consistency risk is not hypothetical; see
 `docs/06-profiler.md` for the calibration plan that would have to work.
+
+**A fifth option, added by M0's result (2026-09-01, NVB-76):**
+
+| Option | For | Against |
+|---|---|---|
+| **E. Style-average** — the mean descriptor vector of the item's style, no text, no model | Scored r = 0.53–0.84 per axis in M0, within ~0.03 of the full text model. Needs only a style label, so it covers every beer including the Hebrew tail. Three lines of pandas, no training, no LLM, no network. | Cannot distinguish two beers of the same style — which is precisely the discrimination a recommender needs. Its ceiling as a *ranker within a style* is zero, and M0 measured prediction, not ranking. |
+
+Option E is not proposed as a replacement for B; it is proposed as the honest
+**floor of the chain in D**, in place of, or ahead of, the manual form. It is
+also the thing every future profiler claim has to beat, per rule 1.
+
+**The gap M0 leaves open:** it scored *reconstruction of descriptor labels*, not
+*within-style discrimination*. Those are different questions and E is strong on
+the first by construction. Whether the +0.03 that text adds is concentrated
+exactly where it matters — separating two IPAs — is unmeasured. That is a good
+candidate for M1.
 
 **If we use an LLM at all, non-negotiables** (these are engineering, not
 decisions): temperature 0, JSON schema output, k-sample ensemble with per-axis
@@ -96,6 +134,28 @@ nothing. A new fork, with no lean yet:
 numerics-only on English data where it has every advantage, option C wins by
 default and this whole sub-decision closes for free. Do not build A or B before
 that number exists.
+
+**The number now exists (2026-09-01, NVB-76).** On English data, with every
+advantage, the text path is worth about **+0.03 Pearson r** over a style-average
+that reads no text at all — reliably positive on 4 of 11 axes, and material
+(≥ 0.05) on none. `docs/06-profiler.md` has the table.
+
+That is the price of option C, and it is small. **Lean shifts to C** for the
+Hebrew tail: skip the text path there, use style + ABV/IBU, and spend nothing on
+translation or a multilingual encoder until something else justifies it. A and B
+stay on the table and are cheap to revisit — the argument for them is now
+quantified at ~0.03 r, so either one has to buy more than that.
+
+Two caveats that keep this a lean and not a decision:
+
+- The +0.03 is measured on **US-craft beers with clean, populous style labels**.
+  Style-average is strong there precisely because each style has many exemplars.
+  On the Israeli tail, styles are sparser and the baseline should be weaker, so
+  text may be worth more than 0.03 exactly where we cannot measure it.
+- It also assumes TF-IDF. A sentence encoder could widen the gap; M0 deliberately
+  did not test one (see `docs/06-profiler.md`). If someone wants to reopen this,
+  the experiment is "swap the vectoriser, rerun the same harness", which is an
+  afternoon.
 
 ---
 
