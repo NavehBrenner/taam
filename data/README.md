@@ -3,6 +3,13 @@
 Everything under `raw/` and `processed/` is **gitignored**. Nothing here is
 committed — see ADR-0001 and `scripts/pre-commit`.
 
+## `taam.db` — your check-ins
+
+Created on first run of `python scripts/checkin.py`. Never committed (`*.db` is
+gitignored and the pre-commit hook refuses it). Override the location with
+`$TAAM_DB`. This is the only irreplaceable file in the project: everything else
+here can be re-downloaded.
+
 ## What to download
 
 ### `raw/beer_profile_and_ratings.csv` — needed for M0 and M1

@@ -1,5 +1,16 @@
 # 09 — Check-in UX
 
+## What exists (NVB-80, 2026-08-30)
+
+`scripts/checkin.py` — a terminal prompt implementing the flow below, minus
+steps 1's scan/OCR paths. Item pick is recent-list → text search → manual add;
+rating is 0–10 (D-010 option B); the three bootstrap questions are fixed
+(D-009 option B) and stored with `question_id` + `question_version`; context
+tags are pre-filled from the last check-in and Enter accepts them.
+
+Deliberately not built: a phone app, offline sync, prediction display, OCR.
+Data collected now cannot be backfilled; a UI can be written at any time.
+
 ## The binding constraint
 
 **Under 30 seconds, one-handed, in a noisy bar, possibly after two beers.**

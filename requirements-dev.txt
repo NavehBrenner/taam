@@ -1,5 +1,8 @@
 -r requirements.txt
 
+# the package itself, so scripts and tests import `taam` without sys.path hacks
+-e .
+
 pytest
 mypy
 qualety==0.1.3

@@ -59,6 +59,12 @@ D-003/D-006 need rethinking (probably toward a stronger prior, D-007 option C).
 
 ## M2 — Catalog and logging (the boring, essential part)
 
+> **Status: logging is live (NVB-80).** `scripts/checkin.py` +
+> `src/taam/storage/db.py`. Items 1, 4 and 5 are done; the manual path (3) exists
+> as typed entry, without OCR. The catalog clients (2) are not written, and are
+> now the least urgent part of M2: NVB-78 measured catalog.beer at 10 Israeli
+> beers with no descriptions, so for local beer there is nothing to fetch.
+
 1. Schema per `docs/04-data-model.md`. SQLite.
 2. catalog.beer client, cached permanently to local disk (CC BY 4.0 permits it —
    verified in NVB-78). Untappd client **on demand only**, holding nothing past

@@ -3,6 +3,21 @@
 Sketch, not a migration. Everything here is provisional — see D-015 especially,
 which is the one that is painful to change later.
 
+## What is implemented (NVB-80, 2026-08-30)
+
+`src/taam/storage/db.py` creates `item`, `checkin`, `checkin_answer` and
+`checkin_context`. `profile` and `palate` are **not** created yet — nothing
+writes them until M0/M3, and an empty table is a claim the schema is settled
+when it is not. Two deliberate deviations from the sketch below:
+
+- **`id` is `INTEGER PRIMARY KEY`, not a uuid.** This is one SQLite file on one
+  laptop; uuids buy merge-safety that nothing here needs. If the store is ever
+  synced across devices, that is the moment to switch.
+- **`identity_key` is `UNIQUE` and computed as lowercased alphanumerics of
+  `maker + name`.** D-015 is still open (NVB-90) — this is the crude key that
+  stops the same beer being entered twice, and it is recomputable from
+  `name`/`maker` with one `UPDATE`, so it locks nothing.
+
 ## Entities
 
 ```

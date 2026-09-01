@@ -15,8 +15,12 @@ context. Beer first, designed to extend to whisky, wine, and beyond.
 
 ## Status
 
-**Phase 0 — design only.** Nothing is built. Nothing is decided. This repo is
-currently a specification and a decision register.
+**Phase 0, and logging has started.** Almost nothing is built and nothing is
+decided — this repo is mostly a specification and a decision register. The
+exceptions are the two things that had to come first: the M0 falsification
+harness (written, controls pass, needs the Kaggle CSV) and the check-in flow
+(`python scripts/checkin.py`), because check-ins are the one thing that cannot
+be collected retroactively.
 
 ## The idea in one diagram
 
@@ -78,19 +82,19 @@ docs/13  Source terms and scraping policy  <- read before writing an adapter
 docs/14  Working on this repo (Linear -> branch -> PR, and the checks)
 docs/adr Architecture decision records (currently: none accepted)
 
-src/taam/           Code skeleton. Empty by design.
+src/taam/           Mostly a skeleton; storage/ is real.
   domains/          Per-domain descriptor vocabularies
   catalog/          Item ingest and normalisation
   profiler/         Item -> profile vector
   preference/       Profile + ratings -> palate model
   recommend/        Palate + candidates + mood -> ranked list
-  storage/          Persistence
+  storage/          Persistence — db.py: SQLite schema + check-in writes
 
 notebooks/          Exploration. Expect mess here; that's fine.
 tests/              Controls for the experiment harnesses.
 data/raw            Downloaded datasets. Gitignored.
 data/processed      Derived artefacts. Gitignored.
-scripts/            One-off ingest and evaluation scripts.
+scripts/            checkin.py (run daily), plus ingest and experiment scripts.
 tests/
 ```
 
@@ -99,6 +103,10 @@ tests/
 ```bash
 pip install -r requirements-dev.txt          # runtime deps + pytest + mypy
 ln -sf ../../scripts/pre-commit .git/hooks/pre-commit   # data guard, do this once
+
+# log a beer — do this from day one, it cannot be backfilled:
+python scripts/checkin.py
+python scripts/checkin.py --list
 
 # prove the M0 harness works (synthetic data, no download):
 python tests/test_m0_harness.py
@@ -131,10 +139,11 @@ Every source in this project can be named in public, which is deliberate:
 |---|---|---|
 | Profiler training labels | Kaggle Beer Profile and Ratings | dataset licence |
 | Population prior | BeerAdvocate / RateBeer dumps (UCSD) | research use, cited |
-| Permanent catalog | beer.db | public domain |
-| Permanent catalog | catalog.beer | **terms unverified — blocking** |
-| Local beers | the bottle label, via OCR, and hand entry | ours |
-| Descriptions, community scores | Untappd documented API, on demand | not retained past their cache window; attributed |
+| Permanent catalog | catalog.beer | **CC BY 4.0**, verified NVB-78 — permanent retention, attribution required |
+| Local beers | the bottle label, and hand entry via `scripts/checkin.py` | ours |
+| Local descriptions | brewery sites' own tasting notes | first-party, by hand |
+| ~~Permanent catalog~~ | ~~beer.db~~ | dead — zero Israeli rows, abandoned 2014 (DE-001) |
+| ~~Descriptions, community scores~~ | ~~Untappd API~~ | out — registration closed (DE-002) |
 
 No scraped data, and no scraper code. See
 [`docs/13-scraping-policy.md`](docs/13-scraping-policy.md) for the reasoning,
