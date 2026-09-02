@@ -43,19 +43,25 @@ Full detail in `docs/14-workflow.md`. The short version:
    `taam · טעם`, team `NVB`) before writing code.
 2. **Branch off the issue** using Linear's own `gitBranchName`, so the issue,
    branch and PR link themselves.
-3. **Open a PR. Never merge it.** `main` is protected and Naveh is the only
+3. **Walk it through before the PR, and stop.** Once the three checks pass, run
+   the `issue-walkthrough` skill (`.claude/skills/issue-walkthrough/SKILL.md`):
+   what the issue asked, what we found with baselines and uncertainty, what
+   moved in the register, what failed. Present it and **wait for Naveh's
+   response**. Do not open the PR in the same turn. This is research; the
+   finding is the deliverable and a diff does not carry it.
+4. **Open a PR. Never merge it.** `main` is protected and Naveh is the only
    merger. Do not push to `main`.
-4. Use `git switch`, not `git checkout`.
-5. **The plugin reflex.** When Naveh asks for a code change, ask whether the
+5. Use `git switch`, not `git checkout`.
+6. **The plugin reflex.** When Naveh asks for a code change, ask whether the
    rule behind it can be enforced by a qualety rule instead of remembered by
    the next session. Instructions here are advisory; CI is not.
-6. **Anything about qualety is filed upstream**, with
+7. **Anything about qualety is filed upstream**, with
    `gh issue create -R NavehBrenner/qualety` — a new rule, a false positive, a
    bug. Never a Linear issue in this project: that board is for taam's work,
    and a Linear issue is invisible to whoever fixes qualety.
-7. If qualety flags correct code, file the false positive upstream and disable
+8. If qualety flags correct code, file the false positive upstream and disable
    the rule with a pointer to that issue. Do not contort the code to please it.
-8. The three checks are `qualety check`, `pytest`, `mypy`. Run them before
+9. The three checks are `qualety check`, `pytest`, `mypy`. Run them before
    opening a PR — CI runs exactly the same three.
 
 ## Style
