@@ -97,6 +97,28 @@ def load(path: str) -> pd.DataFrame:
     return df
 
 
+def description_body(desc: pd.Series) -> pd.Series:
+    """The description with the boilerplate `Notes:` prefix removed.
+
+    Every description in the Kaggle set starts with the literal string
+    `Notes:`. For 1347 of 3197 beers -- 42% -- that is the ENTIRE field: there
+    is no description, only the prefix. A naive empty-string check passes them,
+    which is how they went unnoticed in the first M0 run and diluted the
+    measured text lift across two beers in five that had nothing to say.
+    """
+    return (desc.fillna("").str.replace("Notes:", "", regex=False)
+            .str.replace("\\t", " ", regex=False).str.strip())
+
+
+def has_description(df: pd.DataFrame) -> pd.Series:
+    """True where the description contains at least one word of actual text.
+
+    The split is clean rather than arbitrary: 1850 beers have >= 1 word, 1347
+    have exactly zero. There is no judgement call at the boundary.
+    """
+    return description_body(df["Description"]).str.split().str.len() > 0
+
+
 def make_synthetic(n: int = 1200, seed: int = SEED) -> pd.DataFrame:
     """Synthetic data with a KNOWN structure, to prove the harness works.
 
@@ -388,6 +410,10 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=SEED, help="first split seed")
     ap.add_argument("--seeds", type=int, default=20,
                     help="number of train/holdout splits to average over")
+    ap.add_argument("--text-only", action="store_true",
+                    help="drop the 42%% of beers whose description is the bare "
+                         "`Notes:` prefix, and measure the text lift on beers "
+                         "that actually have text")
     args = ap.parse_args()
 
     if args.self_test:
@@ -396,7 +422,15 @@ def main() -> int:
         df = make_synthetic(seed=args.seed)
     elif args.data:
         df = load(args.data)
+        real = int(has_description(df).sum())
         print(f"Loaded {len(df)} beers from {args.data}")
+        print(f"  {real} have a description; {len(df) - real} "
+              f"({(len(df) - real) / len(df):.0%}) are the bare `Notes:` prefix")
+        if args.text_only:
+            df = df[has_description(df)].copy()
+            print(f"  --text-only: keeping the {len(df)} with text. The text path "
+                  f"is dead weight on the rest,\n  so the full-set lift understates "
+                  f"what a description is worth when there is one.")
     else:
         ap.error("pass --data <csv> or --self-test")
 

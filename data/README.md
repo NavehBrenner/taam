@@ -24,6 +24,12 @@ unzip -o /tmp/beer.zip -d data/raw/
 Gives `beer_profile_and_ratings.csv` (3,197 beers) plus two fuzzy-match lists and
 an `.xlsx` of descriptor definitions. Everything under `data/` is gitignored.
 
+**Known trap:** every `Description` starts with the literal prefix `Notes:`, and
+for **1,347 of the 3,197 beers that is the whole field** — there is no
+description. An empty-string check does not catch them. Use
+`m0_profiler_validation.has_description()`, and see `docs/06-profiler.md` for
+what averaging over them cost.
+
 ### `raw/beeradvocate.json` / `raw/ratebeer.json` — needed for the population prior
 <https://cseweb.ucsd.edu/~jmcauley/datasets.html>
 

@@ -20,7 +20,7 @@ re-deriving it.
 | ID | Decision | Current lean | Status |
 |---|---|---|---|
 | D-001 | Beer descriptor vocabulary | Kaggle 13-axis set + hard numerics; `salty` now unmeasured, not fine | OPEN |
-| D-002 | How to profile an item | Supervised regressor, LLM as fallback; **Hebrew fork: M0 says C is cheap** | OPEN |
+| D-002 | How to profile an item | Supervised regressor, LLM as fallback; **Hebrew fork: no lean, C withdrawn** | OPEN |
 | D-003 | Dimensionality reduction | PCA first, autoencoder only if PCA disappoints | OPEN |
 | D-004 | Primary catalog source | catalog.beer (CC BY 4.0 ✅); Untappd dead (DE-002) | OPEN |
 | D-005 | Israeli / local coverage | label OCR + brewery pages + manual entry | OPEN |
@@ -135,27 +135,50 @@ numerics-only on English data where it has every advantage, option C wins by
 default and this whole sub-decision closes for free. Do not build A or B before
 that number exists.
 
-**The number now exists (2026-09-01, NVB-76).** On English data, with every
-advantage, the text path is worth about **+0.03 Pearson r** over a style-average
-that reads no text at all — reliably positive on 4 of 11 axes, and material
-(≥ 0.05) on none. `docs/06-profiler.md` has the table.
+**The number now exists (2026-09-01, NVB-76) — and the first version of it was
+wrong.** Recorded in full because the correction is the useful part.
 
-That is the price of option C, and it is small. **Lean shifts to C** for the
-Hebrew tail: skip the text path there, use style + ABV/IBU, and spend nothing on
-translation or a multilingual encoder until something else justifies it. A and B
-stay on the table and are cheap to revisit — the argument for them is now
-quantified at ~0.03 r, so either one has to buy more than that.
+*First reading, since withdrawn:* the text path is worth about +0.03 Pearson r
+over style-average, reliable on 4 of 11 axes and material on none. On that
+number the lean moved to **C** — skip text for Hebrew, buy nothing.
 
-Two caveats that keep this a lean and not a decision:
+*What was wrong with it:* 42% of the Kaggle beers **have no description at
+all**. The field is the literal string `Notes:` with nothing after it, for 1,347
+of 3,197 rows. The +0.03 was that dilution averaged in — the text path scored as
+dead weight on two beers in five.
 
-- The +0.03 is measured on **US-craft beers with clean, populous style labels**.
+*Corrected reading, on the 1,850 beers that have text:* reliable lift on **7 of
+11 axes**, and **material (≥ 0.05 r) on four** — Alcohol +0.167, Bitter +0.072,
+Hoppy +0.066, Spices +0.054. In R² terms the description kills 21–45% of the
+variance style-average leaves behind on those four. Table in
+`docs/06-profiler.md`.
+
+**So the lean toward C is withdrawn, and this sub-decision goes back to having no
+lean** — which is where it was before M0, and where the register says it should
+sit until evidence settles it. A description, when one exists, is worth
+substantially more than the price at which C looked obviously correct. Getting a
+Hebrew description into a form the model can read is now plausibly worth paying
+for, which is exactly what A and B propose.
+
+What would settle it, in order of cost:
+
+- **NVB-97** — swap TF-IDF for a sentence encoder on the text-bearing subset.
+  Cheap, and it bounds option B: a multilingual encoder cannot be worth more on
+  Hebrew than an English encoder is on English.
+- **NVB-96** — within-style discrimination. If the lift is concentrated within
+  style, text matters more than any of these numbers suggest; if it is spread
+  evenly, style-average absorbs most of it and C recovers.
+
+Two caveats that apply to every number above:
+
+- All of it is measured on **US-craft beers with clean, populous style labels**.
   Style-average is strong there precisely because each style has many exemplars.
   On the Israeli tail, styles are sparser and the baseline should be weaker, so
-  text may be worth more than 0.03 exactly where we cannot measure it.
-- It also assumes TF-IDF. A sentence encoder could widen the gap; M0 deliberately
-  did not test one (see `docs/06-profiler.md`). If someone wants to reopen this,
-  the experiment is "swap the vectoriser, rerun the same harness", which is an
-  afternoon.
+  text may be worth *more* than this exactly where we cannot measure it.
+- It assumes TF-IDF, which is why NVB-97 exists. The subset result also has a
+  moving baseline: with 1,850 beers instead of 3,197, style means are noisier and
+  part of the wider gap is that, not a stronger model. The direction is not in
+  doubt; the magnitude is soft.
 
 ---
 

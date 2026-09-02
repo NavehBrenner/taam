@@ -199,6 +199,52 @@ The verdict bars stay stated in `r` (the 0.40 drop bar, the sign test) because
 that is what D-001 is written in; R² and ΔR² are reported alongside so the size
 of a lift cannot be misread again.
 
+#### 42% of the beers have no description, and it halved the measured lift
+
+Every description in the Kaggle set begins with the literal string `Notes:`. For
+**1,347 of 3,197 beers — 42% — that is the entire field.** There is no
+description, only the prefix. An empty-string check passes them, which is how
+they went unnoticed: the text path was dead weight on two beers in five, and the
+lift above is that dilution averaged in.
+
+Rerun on the 1,850 beers that have at least one word of description
+(`--text-only`; the split is clean, 1,850 have ≥ 1 word and 1,347 have exactly
+zero, so there is no judgement call at the boundary):
+
+| axis | Δr | ΔR² | R² base → model | resid killed | reliable? |
+|---|---|---|---|---|---|
+| Astringency | +0.030 | +0.054 | 0.389 → 0.443 | 8.5% | 20/20 ✅ |
+| Body | +0.019 | +0.030 | 0.625 → 0.656 | 7.8% | 19/20 |
+| **Alcohol** | **+0.167** | **+0.252** | 0.443 → 0.695 | **44.7%** | 20/20 ✅ |
+| **Bitter** | **+0.072** | **+0.113** | 0.538 → 0.651 | **24.5%** | 20/20 ✅ |
+| Sweet | +0.069 | +0.100 | 0.430 → 0.530 | 17.2% | 19/20 |
+| Sour | +0.021 | +0.036 | 0.709 → 0.745 | 11.2% | 20/20 ✅ |
+| Salty | +0.002 | +0.024 | 0.240 → 0.264 | 2.0% | 12/20 |
+| Fruits | +0.032 | +0.053 | 0.619 → 0.671 | 13.5% | 20/20 ✅ |
+| **Hoppy** | **+0.066** | **+0.103** | 0.516 → 0.619 | **21.3%** | 20/20 ✅ |
+| **Spices** | **+0.054** | **+0.081** | 0.528 → 0.610 | **17.3%** | 20/20 ✅ |
+| Malty | +0.016 | +0.026 | 0.613 → 0.639 | 6.7% | 19/20 |
+
+**The result roughly doubles.** Reliable lift goes from 4 axes to **7**, and the
+materiality bar — which nothing cleared on the full set — is now cleared by
+**four axes**: Alcohol, Bitter, Hoppy, Spices. Bitter's description kills a
+quarter of the variance style-average leaves behind; Alcohol's kills nearly half.
+
+Two things to keep straight about this comparison:
+
+- **The baseline weakens too.** The subset is 1,850 beers rather than 3,197, so
+  style means are estimated from fewer exemplars — Bitter's base R² falls
+  0.584 → 0.538. Part of the wider gap is a noisier baseline, not only a stronger
+  model. The direction is not in doubt, the exact magnitude is.
+- **This is the honest number for our actual use case.** A beer we want to
+  profile either has a description or it does not. On the ones that do, this
+  table is what the text is worth; on the ones that do not, the text path
+  contributes nothing by construction and the chain falls through to its next
+  link. Averaging the two together answers a question nobody asks.
+
+`Salty` collapses further here (base R² 0.240) and remains unreliable at 12/20 —
+consistent with it being near-constant rather than hard.
+
 Three things follow, none of which close a decision:
 
 1. **Style is not a poor proxy for flavour — it is a very good one**, at least on

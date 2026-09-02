@@ -104,6 +104,40 @@ share-of-remaining framing divides by `1 − R²_base`, so it flatters a strong
 baseline (ΔR² is the neutral column); and Alcohol's 22.9% is noise wearing a
 large number — 18/20 splits, interval [−48.7, +41.8].
 
+### …and then 42% of the beers turned out to have no description
+
+Every description in the Kaggle set begins with the literal string `Notes:`. For
+**1,347 of 3,197 beers that is the entire field.** No description, just the
+prefix. The harness's leakage check tested for empty strings and passed them.
+
+So every number above averages the text path's contribution across two beers in
+five where it had nothing to read. Rerun on the 1,850 that do have text
+(`--text-only`, same 20 splits):
+
+| axis | Δr | ΔR² | R² base → model | resid killed | reliable? |
+|---|---|---|---|---|---|
+| **Alcohol** | **+0.167** | **+0.252** | 0.443 → 0.695 | **44.7%** | 20/20 ✅ |
+| **Bitter** | **+0.072** | **+0.113** | 0.538 → 0.651 | **24.5%** | 20/20 ✅ |
+| **Hoppy** | **+0.066** | **+0.103** | 0.516 → 0.619 | **21.3%** | 20/20 ✅ |
+| **Spices** | **+0.054** | **+0.081** | 0.528 → 0.610 | **17.3%** | 20/20 ✅ |
+| Sweet | +0.069 | +0.100 | 0.430 → 0.530 | 17.2% | 19/20 |
+| Fruits | +0.032 | +0.053 | 0.619 → 0.671 | 13.5% | 20/20 ✅ |
+| Sour | +0.021 | +0.036 | 0.709 → 0.745 | 11.2% | 20/20 ✅ |
+| Astringency | +0.030 | +0.054 | 0.389 → 0.443 | 8.5% | 20/20 ✅ |
+
+**Reliable lift goes from 4 axes to 7, and the materiality bar — which nothing
+cleared on the full set — is cleared by four.** On beers that have a description,
+that description kills 21–45% of the variance style-average leaves behind.
+
+Caveat, and it is not small: the subset is 1,850 beers rather than 3,197, so
+style means are estimated from fewer exemplars and the *baseline* weakens too
+(Bitter 0.584 → 0.538). Part of the wider gap is a noisier baseline, not a
+stronger model. The direction is not in doubt; the magnitude is soft.
+
+This is also the honest framing for the actual use case. A beer we want to
+profile either has a description or it does not. Averaging the two populations
+together answers a question nobody asks.
+
 ## What surprised us
 
 **Style is a much better proxy for flavour than the docs assumed.** `06-profiler`
@@ -138,10 +172,12 @@ this issue for two days for no reason.
   not 13 — `floral` and `mouthfeel` have no columns and are untested by M0, not
   endorsed by it.
 - **D-002 sub-decision (Hebrew)** — this fork was explicitly waiting on M0, and
-  M0 has now priced it. Option C, "skip text for Hebrew beers, numerics only",
-  costs **~0.03 r**. The lean moves there: do not build translation or a
-  multilingual encoder to buy 0.03. A and B stay on the table with a number
-  attached, which is what they were missing.
+  M0 priced it twice. First at ~0.03 r, on which the lean moved to option C
+  ("skip text, numerics only"). Then the 42% finding invalidated that price: on
+  beers that have text the lift is material on four axes. **The lean toward C is
+  withdrawn and the fork goes back to having no lean**, which is where the
+  register says it should sit until evidence settles it. NVB-97 (sentence
+  encoder) and NVB-96 (within-style) are what would settle it.
 - **D-002 gains option E** — *style-average as a profiler*. Not a replacement for
   the supervised regressor; the honest **floor of the chain**, ahead of the manual
   form, and the thing every future profiler claim has to beat under rule 1. Its
@@ -200,7 +236,12 @@ it, which is the direction that does damage.
   baseline should weaken and text may be worth more than 0.03 — exactly where we
   have no labels to measure it. Uncomfortable, and unresolved.
 - **`salty`** — keep it and shrink it, or add a stability bar? Cheap either way,
-  no rush.
+  no rush. It collapses further on the text-bearing subset (base R² 0.240,
+  12/20), consistent with near-constant rather than hard.
+- **Do the other datasets have the same hole?** `Notes:`-only rows went unnoticed
+  because the check tested for empty strings. The RateBeer/BeerAdvocate dumps for
+  D-007 have not been checked for the equivalent, and should be before anything
+  is fitted on them.
 - **Would a sentence encoder widen the gap?** The experiment is "swap the
   vectoriser, rerun the same harness". An afternoon, and it now has a clear
   number to beat.
@@ -219,6 +260,14 @@ range, which is a way of being misleading while being correct.
 Recorded because it is the instructive part: the number was right, the *scale*
 was the editorial choice, and reporting one scale rather than two is how a result
 gets undersold. The harness now prints both.
+
+**And then it broke a second time, harder.** The 42% of description-less beers
+means the +0.03 was not just reported on a compressing scale — it was measured
+on a diluted population. Two corrections to the same claim inside one session,
+both in the same direction: I had understated the result. Both came from a
+question of Naveh's rather than from the harness, which is the part worth
+noticing. The controls check that the verdict logic is sound; nothing was
+checking that the *data* said what we assumed.
 
 **What is still genuinely unmeasured**: whether the lift is concentrated where
 the recommender lives — inside a style, between two beers whose style vectors are

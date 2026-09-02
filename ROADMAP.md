@@ -25,6 +25,13 @@ Everything downstream is worthless if item profiles are garbage.
 > three axes wrong. It now averages 20 splits and requires the lift to be
 > positive on every one.
 >
+> **And 42% of the Kaggle beers turn out to have no description at all** (the
+> field is the bare string `Notes:`). On the 1,850 that do have text
+> (`--text-only`), the lift roughly doubles: reliable on 7 of 11 axes, material
+> on four. The headline above is the full-set number and understates what a
+> description is worth when there is one. This withdrew D-002's Hebrew lean and
+> opened NVB-96 and NVB-97.
+>
 > `scripts/m0_profiler_validation.py`, controls in `tests/test_m0_harness.py`.
 > It runs a style-average baseline, a numerics-only ridge, and a
 > TF-IDF-text + numerics ridge, then prints per-axis Pearson r and a verdict.
