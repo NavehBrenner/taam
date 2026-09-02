@@ -147,6 +147,58 @@ honest summary:
 > Style-average, which reads no text at all, is worth r ≈ 0.53–0.84 on its own.
 > Everything the description and the numerics add on top of it is about +0.03.
 
+#### …and read it on both scales, because r hides the size
+
+`r` is Pearson correlation between prediction and label, **not** R². The identity
+`R² = r²` you may be carrying from a statistics class is a property of OLS
+evaluated *in-sample*; out of sample the two come apart, because `r` is invariant
+to any affine transform of the prediction and R² is not. A model with the right
+shape at the wrong scale scores r ≈ 1 and R² < 0, and only R² notices.
+
+On this data they happen to agree to ≈ 0.01, because both predictors are
+near-calibrated (regressing truth on prediction gives slopes of 0.91–1.07). That
+is a *measured fact about these predictors*, not a property of the metric, which
+is why the harness now prints both.
+
+It matters, because r compresses near the top of its range and made the result
+look smaller than it is. Same numbers, second scale — the model column is
+whichever of numerics-only / text+numerics has the higher mean r:
+
+| axis | Δr | ΔR² | R² base → model | share of *remaining* variance explained | reliable? |
+|---|---|---|---|---|---|
+| Astringency | +0.020 | +0.027 | 0.433 → 0.460 | 4.7% | 20/20 ✅ |
+| Body | +0.010 | +0.016 | 0.617 → 0.633 | 3.8% | 17/20 |
+| Alcohol | +0.092 | +0.121 | 0.479 → 0.599 | 22.9% | 18/20 |
+| Bitter | +0.042 | +0.066 | 0.584 → 0.649 | **15.8%** | 20/20 ✅ |
+| Sweet | +0.022 | +0.022 | 0.460 → 0.482 | 4.1% | 17/20 |
+| Sour | +0.014 | +0.022 | 0.692 → 0.714 | 6.6% | 18/20 |
+| Salty | −0.001 | +0.001 | 0.304 → 0.305 | −0.6% | 11/20 |
+| Fruits | +0.013 | +0.020 | 0.622 → 0.643 | 5.3% | 17/20 |
+| Hoppy | +0.031 | +0.048 | 0.568 → 0.616 | **11.0%** | 20/20 ✅ |
+| Spices | +0.041 | +0.062 | 0.553 → 0.615 | **13.1%** | 20/20 ✅ |
+| Malty | +0.014 | +0.022 | 0.594 → 0.616 | 5.2% | 17/20 |
+
+"+0.042 r on Bitter" and "style-average explains 58% of the holdout variance,
+text explains 65%, so the description kills **16% of what the baseline left on
+the table**" are the same fact. The second is the more useful one for deciding
+whether the profiler earns its keep. Across the four reliable axes the text kills
+**5–16%** of residual variance, with bootstrap intervals that stay positive
+(Bitter [+9.8, +19.8], Hoppy [+5.3, +17.0], Spices [+1.2, +21.4], Astringency
+[+1.3, +8.4]).
+
+Two limits on that framing, so it does not oversell in the other direction:
+
+- **Share-of-remaining-variance flatters a strong baseline.** It divides by
+  `1 − R²_base`, so the better the baseline, the bigger the same absolute gain
+  looks. ΔR² is the neutral column; both are printed.
+- **Alcohol's 22.9% is noise wearing a large number** — its interval is
+  [−48.7, +41.8] and it is positive on only 18/20 splits. Only the four ✅ axes
+  have intervals clear of zero.
+
+The verdict bars stay stated in `r` (the 0.40 drop bar, the sign test) because
+that is what D-001 is written in; R² and ΔR² are reported alongside so the size
+of a lift cannot be misread again.
+
 Three things follow, none of which close a decision:
 
 1. **Style is not a poor proxy for flavour — it is a very good one**, at least on

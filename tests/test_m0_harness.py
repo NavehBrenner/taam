@@ -52,8 +52,8 @@ def _run(df, m0):
     return scores, m0.report(scores)
 
 
-def _mean(scores, method, axis):
-    return float(np.nanmean(scores[method][axis]))
+def _mean(scores, method, axis, metric="r"):
+    return float(np.nanmean(scores[metric][method][axis]))
 
 
 def test_positive_control():

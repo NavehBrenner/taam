@@ -197,7 +197,9 @@ METHODS = {
 # scoring and report
 # ----------------------------------------------------------------------------
 
+
 def per_axis_r(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+    """Correlation. Asks whether the ranking is right, ignoring scale."""
     out = {}
     for i, axis in enumerate(CANDIDATE_AXES):
         t, p = truth[:, i], pred[:, i]
@@ -205,25 +207,55 @@ def per_axis_r(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
     return out
 
 
-def run_splits(df: pd.DataFrame, holdout: int,
-               seeds: Iterable[int]) -> dict[str, dict[str, list[float]]]:
-    """Score every method on every split. One split is not a measurement."""
-    scores: dict[str, dict[str, list[float]]] = {n: {} for n in METHODS}
+def per_axis_r2(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+    """Variance explained on the holdout. Asks whether the NUMBERS are right.
+
+    Reported alongside r because the two come apart out of sample: r is
+    invariant to any affine transform of the prediction, R^2 is not. A model
+    with the right shape at the wrong scale scores r ~ 1 and R^2 < 0, and only
+    R^2 notices. (On this data they happen to agree to ~0.01, because both
+    predictors are near-calibrated -- but that is a measured fact, not a
+    property of the metric, so both get printed.)
+
+    r also compresses near the top of its range, which makes a real gain look
+    small: +0.042 r on Bitter is +0.066 R^2, i.e. a sixth of the variance the
+    baseline left unexplained. Reporting only r invites underselling.
+    """
+    out = {}
+    for i, axis in enumerate(CANDIDATE_AXES):
+        t, p = truth[:, i], pred[:, i]
+        ss_tot = float(np.sum((t - t.mean()) ** 2))
+        out[axis] = (float("nan") if ss_tot < 1e-12
+                     else 1.0 - float(np.sum((t - p) ** 2)) / ss_tot)
+    return out
+
+
+METRICS = {"r": per_axis_r, "r2": per_axis_r2}
+
+Scores = dict[str, dict[str, dict[str, list[float]]]]  # metric -> method -> axis
+
+
+def run_splits(df: pd.DataFrame, holdout: int, seeds: Iterable[int]) -> Scores:
+    """Score every method on every split, on every metric. One split is not a
+    measurement."""
+    scores: Scores = {m: {n: {} for n in METHODS} for m in METRICS}
     for seed in seeds:
         tr, te = train_test_split(df, test_size=holdout, random_state=seed)
         truth = te[CANDIDATE_AXES].to_numpy()
         for name, fn in METHODS.items():
-            for axis, r in per_axis_r(truth, np.asarray(fn(tr, te), float)).items():
-                scores[name].setdefault(axis, []).append(r)
+            pred = np.asarray(fn(tr, te), dtype=float)
+            for metric, score in METRICS.items():
+                for axis, v in score(truth, pred).items():
+                    scores[metric][name].setdefault(axis, []).append(v)
     return scores
 
 
-def _series(scores: dict[str, dict[str, list[float]]], method: str,
-            axis: str) -> np.ndarray:
-    return np.asarray(scores[method][axis], dtype=float)
+def _series(scores: Scores, method: str, axis: str,
+            metric: str = "r") -> np.ndarray:
+    return np.asarray(scores[metric][method][axis], dtype=float)
 
 
-def _best_model(scores: dict[str, dict[str, list[float]]], axis: str) -> str:
+def _best_model(scores: Scores, axis: str) -> str:
     """Whichever model method has the higher mean r on this axis.
 
     Picked once per axis rather than per split: taking the per-split maximum
@@ -233,10 +265,10 @@ def _best_model(scores: dict[str, dict[str, list[float]]], axis: str) -> str:
                key=lambda m: np.nanmean(_series(scores, m, axis)))
 
 
-def report(scores: dict[str, dict[str, list[float]]]) -> int:
+def report(scores: Scores) -> int:
     width = max(len(a) for a in CANDIDATE_AXES) + 2
     names = list(METHODS)
-    n_splits = len(next(iter(scores["style-average"].values())))
+    n_splits = len(next(iter(scores["r"]["style-average"].values())))
 
     print(f"\nPer-axis Pearson r against held-out labels "
           f"(mean +/- sd over {n_splits} splits)")
@@ -264,19 +296,27 @@ def report(scores: dict[str, dict[str, list[float]]]) -> int:
     MARGIN = 0.05
 
     print("\nLift of the better model over style-average, per split")
-    print("-" * 62)
+    print(f"{'axis'.ljust(width)}{'d r':>8}{'d R2':>8}"
+          f"{'R2 base -> model':>20}{'resid killed':>14}{'positive':>11}")
+    print("-" * (width + 61))
     lifts, wins, chosen = {}, {}, {}
     for axis in CANDIDATE_AXES:
         m = _best_model(scores, axis)
         d = _series(scores, m, axis) - _series(scores, "style-average", axis)
+        b2 = _series(scores, "style-average", axis, "r2")
+        m2 = _series(scores, m, axis, "r2")
         chosen[axis], lifts[axis] = m, d
         wins[axis] = int(np.sum(d > 0))
-        lo, hi = (float("nan"), float("nan")) if np.all(np.isnan(d)) else (
-            float(np.nanmin(d)), float(np.nanmax(d)))
-        print(f"{axis.ljust(width)}{np.nanmean(d):+7.3f}  "
-              f"[{lo:+.3f},{hi:+.3f}]  positive on {wins[axis]}/{n_splits}"
-              f"  ({m})")
-    print("-" * 62)
+        # share of the variance the baseline left unexplained that the model
+        # then explains. Flatters a strong baseline (small denominator), so it
+        # is printed next to the neutral dR2 rather than instead of it.
+        resid = float(np.nanmean((m2 - b2) / (1.0 - b2)))
+        print(f"{axis.ljust(width)}{np.nanmean(d):+8.3f}"
+              f"{np.nanmean(m2 - b2):+8.3f}"
+              f"{np.nanmean(b2):11.3f} ->{np.nanmean(m2):6.3f}"
+              f"{resid * 100:13.1f}%{wins[axis]:8d}/{n_splits}")
+    print("-" * (width + 61))
+    print("d r compresses near the top of its range; d R2 does not. Read both.")
 
     def mean_r(axis: str) -> float:
         return float(np.nanmean(_series(scores, chosen[axis], axis)))
@@ -314,11 +354,12 @@ def report(scores: dict[str, dict[str, list[float]]]) -> int:
 
     print(f"RELIABLE LIFT on {len(working)}/{len(CANDIDATE_AXES)} axes:")
     print("  " + ", ".join(working))
-    print(f"\n  ...of which the lift is also material (>= {MARGIN}): "
+    print(f"\n  ...of which the lift is also material (>= {MARGIN} r): "
           f"{', '.join(material) if material else 'NONE'}")
     if not material:
-        print("  -> the text signal is real but small. Style-average is doing")
-        print("     most of the work; do not oversell the profiler.")
+        print("  -> small on the r scale. Check the d R2 column before calling it")
+        print("     negligible: the same lift can be a tenth of the residual")
+        print("     variance, which is not nothing.")
     print(f"\nHeadline axes over r=0.7: "
           f"{', '.join(headline_ok) if headline_ok else 'NONE'} "
           f"(of {', '.join(HEADLINE_AXES)})")
@@ -328,7 +369,7 @@ def report(scores: dict[str, dict[str, list[float]]]) -> int:
         print("\nPredictable, but style already told us "
               "(no reliable lift over baseline):\n  " + ", ".join(no_lift))
     if weak:
-        print(f"\nBelow r={USEFUL_R} — DROP these from the vocabulary (D-001):")
+        print(f"\nBelow r={USEFUL_R} - DROP these from the vocabulary (D-001):")
         print("  " + ", ".join(weak))
 
     print("\nNext: record this table in docs/06-profiler.md, update D-001 with")
@@ -365,8 +406,8 @@ def main() -> int:
 
     rc = report(scores)
     if args.self_test:
-        bit = np.asarray(scores["text+numerics"]["Bitter"]) - np.asarray(
-            scores["style-average"]["Bitter"])
+        bit = (_series(scores, "text+numerics", "Bitter")
+               - _series(scores, "style-average", "Bitter"))
         ok = bool(np.all(bit > 0))
         print(f"\nself-test {'PASSED' if ok else 'FAILED'} — harness "
               f"{'detects' if ok else 'CANNOT DETECT'} a known text signal.")
