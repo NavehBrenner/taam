@@ -104,11 +104,28 @@ Option E is not proposed as a replacement for B; it is proposed as the honest
 **floor of the chain in D**, in place of, or ahead of, the manual form. It is
 also the thing every future profiler claim has to beat, per rule 1.
 
-**The gap M0 leaves open:** it scored *reconstruction of descriptor labels*, not
-*within-style discrimination*. Those are different questions and E is strong on
-the first by construction. Whether the +0.03 that text adds is concentrated
-exactly where it matters — separating two IPAs — is unmeasured. That is a good
-candidate for M1.
+**The gap M0 left open is now measured (2026-09-02, NVB-96), and E survives it.**
+M0 scored *reconstruction of descriptor labels*; the recommender needs
+*within-style discrimination*, and E is strong on the first by construction and
+worth exactly zero on the second. Scored on the residual after the style mean is
+removed, on the 1,850 beers with a description:
+
+- Only **Alcohol** clears r = 0.40 within style — and there the text is
+  irrelevant, because ABV already carries it (numerics-only r = 0.395).
+- **Bitter** is the one axis where the description is the *only* source of
+  signal: numerics-only ranks same-style pairs at 0.489 (below chance), text at
+  **0.608**. `Hoppy` repeats it more weakly, 0.523 → 0.566.
+- The other eight axes sit between r = 0.03 and r = 0.22 on the residual.
+
+So the M0 lift was **mostly between styles, not within them**. E is the honest
+floor rather than a strawman, on 9 of 11 axes. What B buys over E, on a beer that
+has a description, is bitterness and hoppiness ranking inside a style at about
+three correct calls in five — real, and a poor ranker. Table in
+`docs/06-profiler.md`.
+
+**This does not close D-002.** It prices the options: it says the chain's top
+link earns its keep on specific axes rather than everywhere, and it says nothing
+at all about the LLM link (option A), which has still never been run.
 
 **If we use an LLM at all, non-negotiables** (these are engineering, not
 decisions): temperature 0, JSON schema output, k-sample ensemble with per-axis
@@ -165,9 +182,16 @@ What would settle it, in order of cost:
 - **NVB-97** — swap TF-IDF for a sentence encoder on the text-bearing subset.
   Cheap, and it bounds option B: a multilingual encoder cannot be worth more on
   Hebrew than an English encoder is on English.
-- **NVB-96** — within-style discrimination. If the lift is concentrated within
-  style, text matters more than any of these numbers suggest; if it is spread
-  evenly, style-average absorbs most of it and C recovers.
+- ~~**NVB-96** — within-style discrimination.~~ **Run 2026-09-02, and it cuts
+  both ways.** The lift is *not* concentrated within style, which is the outcome
+  that favours C. But the part that is within-style is carried entirely by the
+  description on `Bitter` and `Hoppy` — the numerics contribute nothing there
+  (pair accuracy 0.489, i.e. chance). So the price of C on the Israeli tail is
+  now stated precisely: no ability to rank two local IPAs by bitterness or
+  hoppiness, ever, plus the between-style lift M0 measured. Whether that price is
+  worth an LLM translation step or a multilingual encoder is a judgement about
+  how often the local menu offers two beers of the same style — which is a
+  question about Naveh's drinking, not about the data. Still no lean.
 
 Two caveats that apply to every number above:
 

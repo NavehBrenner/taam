@@ -64,11 +64,16 @@ into the vector at all. Drop anything under r ≈ 0.4.
 1. PCA the labelled profile vectors. How many components for 80% variance?
 2. Try to name the components. Look at the extremes of each.
 3. k-means in profile space; check which styles dominate each cluster.
-4. **New, from M0:** score *within-style* discrimination, not just descriptor
-   reconstruction. M0 showed style-average is nearly as good as the text model at
-   reproducing labels — but it cannot tell two IPAs apart at all, by
-   construction. Whether the profiler's +0.03 lives exactly there is the question
-   M0 could not answer and is the one that decides D-002 option E.
+4. ~~**New, from M0:** score *within-style* discrimination.~~
+   **RUN (2026-09-02, NVB-96). The +0.03 does not live there.** Scored on the
+   residual after the style mean is removed, only `Alcohol` clears r = 0.40
+   within style, and ABV alone already carries it. The description is the sole
+   source of within-style signal on `Bitter` (same-style pair accuracy 0.489
+   without it, 0.608 with) and `Hoppy` (0.523 → 0.566); the remaining eight axes
+   are between r = 0.03 and 0.22. **D-002 option E is the honest floor, not a
+   strawman.** Table in `docs/06-profiler.md`, reading in
+   `docs/walkthroughs/NVB-96.md`. Items 1–3 (PCA, naming, clustering) are still
+   open.
 
 **Success:** ≤5 components explain ≥80%, and at least PC1 and PC2 are nameable.
 This directly sets the parameter count for M3.
