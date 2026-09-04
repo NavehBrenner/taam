@@ -42,8 +42,10 @@ profiling from a description", which is the thing we actually want.
 distribution — which is precisely the Israeli beers we care most about. This is
 the reason the chain has a second link.
 
-**Open:** which sentence encoder; ridge vs. small MLP (try ridge first, 3.2k rows
-is not a lot); whether to predict all axes jointly or independently.
+**Open:** which sentence encoder (**NVB-97**); whether a non-linear head buys
+anything over ridge (**NVB-98** — every profiler number reported so far came from
+`RidgeCV`, and that was an untested assumption rather than a finding); whether to
+predict all axes jointly or independently.
 
 ## Option B — LLM profiler  *(current lean as fallback)*
 
@@ -274,6 +276,110 @@ A 0.05 margin on one 400-beer holdout sits inside the split-to-split noise
 the lift to be positive on every one; `--seeds 1` reproduces the old behaviour if
 you ever want to see it fail. This is the second time a control caught a bug in
 this harness's verdict logic — see the header of `tests/test_m0_harness.py`.
+
+### Within-style discrimination (2026-09-02, NVB-96)
+
+Everything above scores **descriptor reconstruction**: given a beer, how close is
+the predicted vector to the labelled one. Style-average wins that task nearly by
+construction, because most of the variance in the labels is *between* styles.
+
+That is not the task the recommender does. The recommender is usually choosing
+between beers that are already similar — six on a menu, four IPAs on a shelf. So
+the sharper question is: **can the profiler tell two beers of the same style
+apart?** Style-average scores exactly zero on that, by construction, because it
+gives every beer of a style the identical vector.
+
+Two changes to the harness answer it, both in `--within-style`:
+
+1. **Centre every axis on the TRAIN style mean**, in train and holdout alike, and
+   rerun the same three methods against the residual. Style-average now predicts
+   a constant, so its R² is ~0 and any lift is genuine within-style signal.
+2. **Same-style pairwise ranking accuracy** — of two holdout beers of the same
+   style, how often is the predicted order right? 0.5 is chance, and
+   style-average scores exactly 0.5 because every same-style pair is a tie. This
+   metric is printed in both modes; centring cannot change an order *inside* a
+   style, so it means the same thing either way.
+
+The pot being fished in is not small. On the text-bearing subset the share of
+each axis's variance that lives within a style rather than between:
+
+| Astringency | Body | Alcohol | Bitter | Sweet | Sour | Salty | Fruits | Hoppy | Spices | Malty |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 49% | 34% | 48% | 41% | 50% | 24% | 47% | 33% | 41% | 39% | 35% |
+
+Reproduce with:
+
+```bash
+python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv \
+    --within-style --text-only
+```
+
+1,850 beers with a description, 20 random 400-beer holdouts, mean ± sd:
+
+| axis | r on residual, numerics-only | r on residual, text+numerics | R² on residual | pair acc., numerics | pair acc., **text** |
+|---|---|---|---|---|---|
+| Astringency | 0.029 ± 0.046 | 0.081 ± 0.057 | 0.003 | 0.523 | 0.545 |
+| Body | 0.088 ± 0.042 | 0.129 ± 0.068 | 0.014 | 0.549 | 0.556 |
+| **Alcohol** | 0.395 ± 0.071 | **0.451 ± 0.119** | **0.183** | 0.656 | **0.659** |
+| **Bitter** | −0.029 ± 0.043 | **0.299 ± 0.132** | 0.034 | 0.489 | **0.608** |
+| Sweet | 0.186 ± 0.063 | 0.223 ± 0.084 | 0.045 | 0.576 | 0.588 |
+| Sour | 0.052 ± 0.042 | 0.103 ± 0.069 | 0.007 | 0.520 | 0.551 |
+| Salty | 0.005 ± 0.046 | 0.034 ± 0.045 | −0.005 | 0.507 | 0.509 |
+| Fruits | 0.108 ± 0.046 | 0.147 ± 0.075 | 0.018 | 0.551 | 0.565 |
+| Hoppy | 0.052 ± 0.045 | 0.151 ± 0.122 | 0.026 | 0.523 | 0.566 |
+| Spices | 0.116 ± 0.035 | 0.177 ± 0.112 | 0.032 | 0.558 | 0.566 |
+| Malty | 0.073 ± 0.054 | 0.112 ± 0.076 | 0.011 | 0.536 | 0.557 |
+
+**The lift is not concentrated within style. It is mostly between styles.** Only
+**Alcohol** clears the r = 0.40 bar on the residual, and it is the one axis where
+the text is nearly irrelevant — numerics-only already gets r = 0.395 and pair
+accuracy 0.656, because ABV is a measured fact and alcohol warmth is what it
+measures. Strip the style label out and the other ten axes land between r = 0.03
+and r = 0.30.
+
+**The one place the description is the only source of signal is `Bitter`.**
+Numerics-only scores r = −0.029 and pair accuracy **0.489 — below chance**; the
+ABV/IBU numbers say nothing about how bitter one IPA is versus another. Add the
+description and it goes to r = 0.299 and **0.608**. `Hoppy` is the same story,
+weaker (0.523 → 0.566). So the text is doing real within-style work, on exactly
+the axes a beer description talks about, and nowhere else.
+
+**But read the size.** 0.608 means: shown two beers of the same style, the
+profiler puts the bitterer one first about three times in five. A coin does it
+one in two. That is a genuine signal and a poor ranker.
+
+**A dataset fact that changes how the `numerics-only` column reads: `Min IBU`
+and `Max IBU` are the *style's* range, not the beer's measurement.** Zero of 111
+styles show any variation in either column. So inside a style the numerics block
+is an **ABV-only model**, which is why it can do `Alcohol` and nothing else, and
+why "the numerics cannot rank bitterness" is a statement about this dataset
+rather than about IBU. A real catalog entry or bottle label often carries a
+measured IBU that does vary within style; if we can get it, the within-style
+bitterness number above is a **lower bound**. Whether catalog.beer or the Israeli
+brewery pages publish per-beer IBU is unchecked.
+
+This also retro-explains M0's "numerics add essentially nothing over style": two
+of the three numerics *are* the style.
+
+Two caveats, in both directions:
+
+- **r and R² come apart badly here**, unlike the raw-label case where the doc
+  above measured them agreeing to ≈0.01. Bitter scores r = 0.299 but R² = 0.034,
+  where a per-split optimal affine rescale would give ≈0.107. On the residual the
+  ridge predictions are mis-scaled, not merely small. A calibration step would
+  recover most of that gap, and would not change the pair accuracy at all —
+  another reason to lead with the ranking metric for this question.
+- **Some of the residual is unlearnable and we do not know how much.** The Kaggle
+  descriptor labels are themselves aggregates, so part of the within-style spread
+  is label noise rather than flavour. Nothing here separates "the profiler cannot
+  see it" from "there is nothing to see". NVB-84 (the rating noise ceiling) is the
+  same question one level up, and would give the missing denominator.
+
+**What it means for D-002 option E.** The question the issue posed was whether
+style-average is the honest floor or a strawman. The answer is *floor, on 9 of 11
+axes*. What the profiler adds over the style label, on beers with a description,
+is: a real ability to rank bitterness and hoppiness within a style, an alcohol
+number that ABV already gave us, and close to nothing else.
 
 ## Dimensionality reduction (D-003)
 

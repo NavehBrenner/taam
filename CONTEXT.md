@@ -110,16 +110,27 @@ recommend from it.** `docs/12` previously claimed it didn't; that was wrong. The
 remaining gap is narrower and sharper — nobody *shows you the model*. That is
 still the half of this project worth doing.
 
-**The highest-value thing left to run is M0**, and it needs only a free Kaggle
-download. Besides validating the profiler, it measures how much the description
-text adds over ABV/IBU/style alone — which decides how much the Hebrew problem,
-the manual collection and the whole local-description question are even worth.
+**Within-style discrimination is measured (2026-09-02, NVB-96).** The M0 lift
+turns out to be mostly *between* styles: on the residual after the style mean is
+removed, only `Alcohol` clears r = 0.40 and ABV alone already carries it. The
+description is the only source of within-style signal on `Bitter` and `Hoppy`,
+and it ranks same-style pairs at 0.608 and 0.566 against a 0.5 coin. So the
+profiler is a real but weak discriminator inside a style, and **D-002 option E —
+style-average as the floor of the chain — is the honest answer rather than a
+strawman.** Nothing closed; see `docs/06-profiler.md`.
+
+**The highest-value things left to run are the two questions M0 and NVB-96 both
+left open:** NVB-97 (does a sentence encoder read the description better than
+TF-IDF?) and NVB-84 (how much of the within-style residual is label noise, i.e.
+unlearnable by anyone?). The second is the missing denominator for every number
+above.
 
 ## Status
 
-**Phase 0 → M0, and M2 logging is live.** One decision made (ADR-0001: public
-repo, MIT). The M0 falsification harness is written and its controls pass; it
-needs only the Kaggle CSV to produce a real verdict.
+**M0 is run and M2 logging is live.** One decision made (ADR-0001: public repo,
+MIT). The falsification harness passed its controls, the kill criterion did not
+fire, and the follow-up within-style question (NVB-96) is answered too. M1's PCA
+and clustering items are the next unstarted work.
 
 **Check-ins can be logged as of 2026-08-30 (NVB-80)** —
 `python scripts/checkin.py`, storing to a gitignored `data/taam.db`. This is the
@@ -139,6 +150,5 @@ Issues are milestone-shaped and each carries its kill criteria. The repo docs ar
 the source of truth for design; Linear is the source of truth for *what is
 being worked on*.
 
-**NVB-80 (start logging beers) is done — so start logging.** The remaining
-first move is **NVB-76 (M0, profiler validation)**, which can kill the project in
-a day and is blocked only on a Kaggle download (`data/README.md`).
+**NVB-80 (start logging beers) is done — so start logging.** NVB-76 (M0) and
+NVB-96 (within-style) are both run; nothing is blocked on a download any more.

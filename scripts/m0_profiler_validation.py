@@ -38,6 +38,11 @@ Usage
 -----
     python scripts/m0_profiler_validation.py --data data/raw/beer_profile_and_ratings.csv
 
+    # NVB-96: can it tell two beers of the SAME style apart? Scores everything
+    # on the residual after the style mean is removed, where the baseline is a
+    # constant and cannot compete:
+    python scripts/m0_profiler_validation.py --data ... --within-style --text-only
+
     # sanity-check the harness itself with synthetic data (no download needed):
     python scripts/m0_profiler_validation.py --self-test
 
@@ -156,6 +161,45 @@ def make_synthetic(n: int = 1200, seed: int = SEED) -> pd.DataFrame:
 # the three profilers
 # ----------------------------------------------------------------------------
 
+def centre_within_style(tr: pd.DataFrame,
+                        te: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Subtract the TRAIN style mean from every axis, in both sets (NVB-96).
+
+    Scoring on the raw labels asks "does this beer taste like its style", which
+    style-average answers almost by construction. Scoring on this residual asks
+    the question the recommender actually needs: **can you tell two beers of the
+    same style apart?** Style-average predicts a constant zero here and scores
+    exactly nothing -- which is the point. Any lift on the centred targets is
+    within-style signal and cannot have been laundered from the style label.
+
+    Means come from train only, and a holdout style unseen in train falls back
+    to the overall train mean, so the holdout is never centred with its own
+    labels.
+    """
+    means = tr.groupby(STYLE_COL)[CANDIDATE_AXES].mean()
+    overall = tr[CANDIDATE_AXES].mean()
+
+    def centred(df: pd.DataFrame) -> pd.DataFrame:
+        shift = means.reindex(df[STYLE_COL]).fillna(overall).to_numpy()
+        out = df.copy()
+        out[CANDIDATE_AXES] = df[CANDIDATE_AXES].to_numpy() - shift
+        return out
+
+    return centred(tr), centred(te)
+
+
+def within_style_variance_share(df: pd.DataFrame) -> pd.Series:
+    """Share of each axis's variance that lives WITHIN a style, not between.
+
+    The size of the pot --within-style is fishing in. An R^2 of 0.03 on the
+    residual is 3% of THIS, not 3% of the axis, and the two readings differ by
+    a factor of two or three. Descriptive, computed on the whole set rather than
+    per split, so it is context for the table and not a scored result.
+    """
+    within = df[CANDIDATE_AXES] - df.groupby(STYLE_COL)[CANDIDATE_AXES].transform("mean")
+    return within.var(ddof=0) / df[CANDIDATE_AXES].var(ddof=0)
+
+
 def predict_style_average(tr: pd.DataFrame, te: pd.DataFrame) -> np.ndarray:
     """THE baseline. No text, no model — just 'what does this style taste like'."""
     means = tr.groupby(STYLE_COL)[CANDIDATE_AXES].mean()
@@ -220,7 +264,8 @@ METHODS = {
 # ----------------------------------------------------------------------------
 
 
-def per_axis_r(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+def per_axis_r(truth: np.ndarray, pred: np.ndarray,
+               _styles: np.ndarray) -> dict[str, float]:
     """Correlation. Asks whether the ranking is right, ignoring scale."""
     out = {}
     for i, axis in enumerate(CANDIDATE_AXES):
@@ -229,7 +274,8 @@ def per_axis_r(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
     return out
 
 
-def per_axis_r2(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
+def per_axis_r2(truth: np.ndarray, pred: np.ndarray,
+                _styles: np.ndarray) -> dict[str, float]:
     """Variance explained on the holdout. Asks whether the NUMBERS are right.
 
     Reported alongside r because the two come apart out of sample: r is
@@ -252,22 +298,54 @@ def per_axis_r2(truth: np.ndarray, pred: np.ndarray) -> dict[str, float]:
     return out
 
 
-METRICS = {"r": per_axis_r, "r2": per_axis_r2}
+def per_axis_pair_accuracy(truth: np.ndarray, pred: np.ndarray,
+                           styles: np.ndarray) -> dict[str, float]:
+    """Share of SAME-STYLE holdout pairs the prediction ranks the right way up.
+
+    The metric NVB-96 is about, and the one the recommender actually runs: given
+    two IPAs, which is hoppier? 0.5 is chance, and **style-average scores exactly
+    0.5 by construction** — it gives every beer of a style the identical vector,
+    so every same-style pair is a tie and ties score half. No centring is needed
+    for this one: subtracting a per-style constant cannot change the order inside
+    a style, so this number means the same thing in either mode.
+    """
+    total = np.zeros(len(CANDIDATE_AXES))
+    pairs = 0
+    for style in np.unique(styles):
+        idx = np.flatnonzero(styles == style)
+        if len(idx) < 2:
+            continue
+        t, p = truth[idx], pred[idx]
+        iu = np.triu_indices(len(idx), k=1)
+        agree = (np.sign((t[:, None, :] - t[None, :, :])
+                         * (p[:, None, :] - p[None, :, :])) + 1.0) / 2.0
+        total += agree[iu].sum(axis=0)
+        pairs += len(iu[0])
+    if pairs == 0:
+        return dict.fromkeys(CANDIDATE_AXES, float("nan"))
+    return dict(zip(CANDIDATE_AXES, total / pairs, strict=True))
+
+
+METRICS = {"r": per_axis_r, "r2": per_axis_r2, "pair": per_axis_pair_accuracy}
 
 Scores = dict[str, dict[str, dict[str, list[float]]]]  # metric -> method -> axis
 
 
-def run_splits(df: pd.DataFrame, holdout: int, seeds: Iterable[int]) -> Scores:
+def run_splits(df: pd.DataFrame, holdout: int, seeds: Iterable[int],
+               within_style: bool = False) -> Scores:
     """Score every method on every split, on every metric. One split is not a
     measurement."""
     scores: Scores = {m: {n: {} for n in METHODS} for m in METRICS}
     for seed in seeds:
         tr, te = train_test_split(df, test_size=holdout, random_state=seed)
+        if within_style:
+            tr, te = centre_within_style(tr, te)
         truth = te[CANDIDATE_AXES].to_numpy()
+        styles = te[STYLE_COL].to_numpy()
         for name, fn in METHODS.items():
             pred = np.asarray(fn(tr, te), dtype=float)
             for metric, score in METRICS.items():
-                for axis, v in score(truth, pred).items():
+                for axis, v in score(truth, pred, styles).items():
                     scores[metric][name].setdefault(axis, []).append(v)
     return scores
 
@@ -287,25 +365,36 @@ def _best_model(scores: Scores, axis: str) -> str:
                key=lambda m: np.nanmean(_series(scores, m, axis)))
 
 
-def report(scores: Scores) -> int:
+def print_table(scores: Scores, metric: str, title: str) -> None:
     width = max(len(a) for a in CANDIDATE_AXES) + 2
     names = list(METHODS)
-    n_splits = len(next(iter(scores["r"]["style-average"].values())))
-
-    print(f"\nPer-axis Pearson r against held-out labels "
-          f"(mean +/- sd over {n_splits} splits)")
+    print("\n" + title)
     print("-" * (width + 18 * len(names)))
     print("axis".ljust(width) + "".join(n.rjust(18) for n in names))
     print("-" * (width + 18 * len(names)))
     for axis in CANDIDATE_AXES:
         row = axis.ljust(width)
         for n in names:
-            v = _series(scores, n, axis)
+            v = _series(scores, n, axis, metric)
             cell = ("     n/a" if np.all(np.isnan(v))
                     else f"{np.nanmean(v):6.3f}+-{np.nanstd(v):.3f}")
             row += cell.rjust(18)
         print(row)
     print("-" * (width + 18 * len(names)))
+
+
+def report(scores: Scores, within_style: bool = False) -> int:
+    width = max(len(a) for a in CANDIDATE_AXES) + 2
+    n_splits = len(next(iter(scores["r"]["style-average"].values())))
+
+    target = ("within-style residual labels (style mean removed)" if within_style
+              else "held-out labels")
+    print_table(scores, "r", f"Per-axis Pearson r against {target} "
+                             f"(mean +/- sd over {n_splits} splits)")
+    print_table(scores, "pair",
+                "Within-style pairwise ranking accuracy — of two beers of the "
+                "SAME style,\nhow often is the predicted order right? "
+                "(0.5 = chance; style-average is 0.5 by construction)")
 
     # An axis "works" only if it is BOTH usefully predictive in absolute terms
     # AND beats the no-text baseline reliably. Relative improvement on ONE split
@@ -317,14 +406,22 @@ def report(scores: Scores) -> int:
     USEFUL_R = 0.40
     MARGIN = 0.05
 
-    print("\nLift of the better model over style-average, per split")
+    lift_title = ("Model score on the within-style residual "
+                  "(style-average scores zero by construction)" if within_style
+                  else "Lift of the better model over style-average, per split")
+    print("\n" + lift_title)
     print(f"{'axis'.ljust(width)}{'d r':>8}{'d R2':>8}"
           f"{'R2 base -> model':>20}{'resid killed':>14}{'positive':>11}")
     print("-" * (width + 61))
     lifts, wins, chosen = {}, {}, {}
     for axis in CANDIDATE_AXES:
         m = _best_model(scores, axis)
-        d = _series(scores, m, axis) - _series(scores, "style-average", axis)
+        # In within-style mode style-average is a constant, so its r is
+        # undefined. A constant carries no ranking information at all, so score
+        # it as 0 rather than dropping the axis -- the lift is then simply the
+        # model's own r, which is the honest reading.
+        base = np.nan_to_num(_series(scores, "style-average", axis), nan=0.0)
+        d = _series(scores, m, axis) - base
         b2 = _series(scores, "style-average", axis, "r2")
         m2 = _series(scores, m, axis, "r2")
         chosen[axis], lifts[axis] = m, d
@@ -358,9 +455,23 @@ def report(scores: Scores) -> int:
     print("=" * 62)
     print(f"criterion: an axis works if mean r >= {USEFUL_R} AND its lift over")
     print(f"style-average is positive on all {n_splits} splits\n")
+    if within_style:
+        print("within-style mode: the target is the residual after the style mean")
+        print("is removed, so the bar above is asking whether the model can tell")
+        print("two beers of the SAME style apart. Style-average cannot, at all.\n")
 
     if not working:
-        print("*** KILL CRITERION HIT ***\n")
+        print("*** KILL CRITERION HIT ***\n" if not within_style
+              else "*** NO USABLE WITHIN-STYLE SIGNAL ***\n")
+        if within_style:
+            print(f"No axis reaches r={USEFUL_R} on the within-style residual.")
+            print("The profiler's lift in M0 was concentrated between styles, not")
+            print("within them: it can say what an IPA tastes like and not which")
+            print("IPA. For a within-style ranking that is no better than the")
+            print("style label, which promotes D-002 option E (style-average as")
+            print("the floor) from strawman to the honest answer.")
+            print("Log it in DEAD-ENDS.md WITH THIS TABLE.")
+            return 1
         if weak and not no_lift:
             print("No axis is usefully predictable from text or numerics at all")
             print(f"(every axis below r={USEFUL_R}). Either the descriptions carry")
@@ -374,7 +485,8 @@ def report(scores: Scores) -> int:
         print("Log this in DEAD-ENDS.md WITH THIS TABLE.")
         return 1
 
-    print(f"RELIABLE LIFT on {len(working)}/{len(CANDIDATE_AXES)} axes:")
+    print(f"{'USABLE WITHIN-STYLE SIGNAL' if within_style else 'RELIABLE LIFT'} "
+          f"on {len(working)}/{len(CANDIDATE_AXES)} axes:")
     print("  " + ", ".join(working))
     print(f"\n  ...of which the lift is also material (>= {MARGIN} r): "
           f"{', '.join(material) if material else 'NONE'}")
@@ -382,21 +494,38 @@ def report(scores: Scores) -> int:
         print("  -> small on the r scale. Check the d R2 column before calling it")
         print("     negligible: the same lift can be a tenth of the residual")
         print("     variance, which is not nothing.")
-    print(f"\nHeadline axes over r=0.7: "
-          f"{', '.join(headline_ok) if headline_ok else 'NONE'} "
-          f"(of {', '.join(HEADLINE_AXES)})")
-    if not headline_ok:
-        print("  -> weaker than hoped. Proceed, but expect a low ceiling in M4.")
+    if within_style:
+        pairs = ", ".join(
+            f"{a} {np.nanmean(_series(scores, chosen[a], a, 'pair')):.3f}"
+            for a in HEADLINE_AXES)
+        print(f"\nHeadline axes, same-style pair accuracy (0.5 = chance): {pairs}")
+    else:
+        print(f"\nHeadline axes over r=0.7: "
+              f"{', '.join(headline_ok) if headline_ok else 'NONE'} "
+              f"(of {', '.join(HEADLINE_AXES)})")
+        if not headline_ok:
+            print("  -> weaker than hoped. Proceed, but expect a low ceiling in M4.")
     if no_lift:
         print("\nPredictable, but style already told us "
               "(no reliable lift over baseline):\n  " + ", ".join(no_lift))
-    if weak:
+    if weak and within_style:
+        # NOT a D-001 drop signal. The vocabulary bar is stated on the raw
+        # labels, where these axes are predicted well; failing here means only
+        # that what the profiler knows about them, the style label already said.
+        print(f"\nBelow r={USEFUL_R} on the residual - the style label is all the")
+        print("profiler has on these; it cannot rank two beers of one style:")
+        print("  " + ", ".join(weak))
+    elif weak:
         print(f"\nBelow r={USEFUL_R} - DROP these from the vocabulary (D-001):")
         print("  " + ", ".join(weak))
 
-    print("\nNext: record this table in docs/06-profiler.md, update D-001 with")
-    print(f"the surviving axis list ({len(working) + len(no_lift)} axes), and")
-    print("move to M1 (profile-space structure).")
+    if within_style:
+        print("\nNext: record this table in docs/06-profiler.md and settle D-002")
+        print("option E — the profiler earns its keep exactly on these axes.")
+    else:
+        print("\nNext: record this table in docs/06-profiler.md, update D-001 with")
+        print(f"the surviving axis list ({len(working) + len(no_lift)} axes), and")
+        print("move to M1 (profile-space structure).")
     return 0
 
 
@@ -410,6 +539,11 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=SEED, help="first split seed")
     ap.add_argument("--seeds", type=int, default=20,
                     help="number of train/holdout splits to average over")
+    ap.add_argument("--within-style", action="store_true",
+                    help="score on the residual after removing the style mean "
+                         "(NVB-96): can the profiler tell two beers of the same "
+                         "style apart? Style-average scores zero here by "
+                         "construction, so any lift is within-style signal")
     ap.add_argument("--text-only", action="store_true",
                     help="drop the 42%% of beers whose description is the bare "
                          "`Notes:` prefix, and measure the text lift on beers "
@@ -436,9 +570,16 @@ def main() -> int:
 
     seeds = range(args.seed, args.seed + args.seeds)
     print(f"holdout={args.holdout}  splits={args.seeds}  seeds={seeds.start}..{seeds.stop - 1}")
-    scores = run_splits(df, args.holdout, seeds)
+    if args.within_style:
+        print("--within-style: targets are centred on the TRAIN style mean, so "
+              "the\n  question is within-style discrimination, not descriptor "
+              "reconstruction.")
+        share = within_style_variance_share(df)
+        print("  share of each axis's variance that lives within a style: "
+              + ", ".join(f"{a} {share[a]:.0%}" for a in CANDIDATE_AXES))
+    scores = run_splits(df, args.holdout, seeds, within_style=args.within_style)
 
-    rc = report(scores)
+    rc = report(scores, within_style=args.within_style)
     if args.self_test:
         bit = (_series(scores, "text+numerics", "Bitter")
                - _series(scores, "style-average", "Bitter"))
